@@ -17,3 +17,8 @@
 python3 -m http.server
 # 打开 http://localhost:8000/campus/
 ```
+
+
+
+游戏入口页：https://ruoyaoyan.github.io/personalgame/
+校园地图：https://ruoyaoyan.github.io/personalgame/campus/
