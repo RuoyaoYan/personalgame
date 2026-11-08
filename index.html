@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal Games</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:'Noto Sans SC',system-ui,sans-serif;background:#f3f1ec;color:#1d2433;display:flex;flex-direction:column;align-items:center;padding:56px 20px}
+h1{font-size:34px;font-weight:800;margin:0 0 6px}
+p.sub{margin:0 0 36px;color:#5b6370}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;width:min(900px,100%)}
+a.card{display:block;text-decoration:none;color:inherit;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 8px 26px rgba(30,40,60,.1);transition:transform .2s,box-shadow .2s}
+a.card:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(30,40,60,.16)}
+.thumb{height:150px;background:linear-gradient(160deg,#9fc3e0 0%,#cfe0ec 55%,#6e7a86 56%,#4f5458 100%);position:relative}
+.thumb i{position:absolute;bottom:22px;width:34px;background:#7b3f2b;border:3px solid #7b3f2b;border-radius:2px;box-shadow:inset 0 0 0 4px #3d5566}
+.body{padding:16px 18px 18px}
+.body h2{margin:0 0 4px;font-size:18px}
+.body p{margin:0;font-size:14px;color:#5b6370;line-height:1.55}
+.tag{display:inline-block;margin-top:10px;font-size:12px;font-weight:700;background:#e3edf7;color:#24578a;border-radius:99px;padding:3px 10px}
+</style>
+</head>
+<body>
+<h1>🎮 Personal Games</h1>
+<p class="sub">在浏览器里直接玩的小游戏合集</p>
+<div class="grid">
+  <a class="card" href="campus/">
+    <div class="thumb"><i style="left:30px;height:70px"></i><i style="left:78px;height:96px"></i><i style="left:126px;height:58px"></i><i style="left:200px;height:84px;background:#d6d2c9;border-color:#d6d2c9"></i></div>
+    <div class="body">
+      <h2>🎓 Campus Explorer</h2>
+      <p>3D 欧式城市校园：红砖落地窗建筑、贯穿校园的 Campusbrücke、哥特钟楼和维多利亚公园。走遍 20 个地点赚满 100 ECTS。</p>
+      <span class="tag">Three.js · 3D</span>
+    </div>
+  </a>
+</div>
+</body>
+</html>
