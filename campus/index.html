@@ -17,9 +17,6 @@ body.night .glass{background:rgba(20,26,42,.86);color:#e8eefc;border-color:rgba(
 #hud{position:fixed;top:14px;left:14px;padding:12px 16px 14px;width:270px;z-index:20}
 #hud h1{margin:0;font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px}
 #hud .sub{font-size:12px;opacity:.65;margin:2px 0 10px}
-.prog{height:9px;border-radius:99px;background:rgba(48,112,179,.15);overflow:hidden}
-.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3070b3,#4fb3ff);border-radius:99px;transition:width .6s cubic-bezier(.2,.9,.3,1.2)}
-.progtxt{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:5px}
 
 #places{position:fixed;top:132px;left:14px;width:270px;max-height:calc(100% - 150px);overflow:auto;padding:6px 8px 8px;z-index:20}
 #places .zone{font-size:11px;font-weight:800;letter-spacing:.5px;opacity:.5;margin:10px 8px 3px}
@@ -29,8 +26,6 @@ body.night .glass{background:rgba(20,26,42,.86);color:#e8eefc;border-color:rgba(
 #places .ic{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex:none}
 #places .nm{flex:1;line-height:1.15}
 #places .nm small{display:block;font-size:11px;opacity:.55}
-#places .item:not(.found) .st::after{content:'○';opacity:.35}
-#places .item.found .st::after{content:'✓';color:#2e9d5b;font-weight:800}
 
 #tools{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:20}
 #tools button{border:none;padding:9px 13px;font-size:13.5px;font-weight:600;color:#1d2433;display:flex;align-items:center;gap:6px}
@@ -61,7 +56,6 @@ body.night #tools button{color:#e8eefc}
 .label{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;white-space:nowrap;transform-origin:50% 100%;display:flex;align-items:center;gap:6px;padding:4px 11px 4px 5px;border-radius:999px;background:rgba(255,255,255,.95);color:#1d2433;font-weight:600;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.2);will-change:transform}
 .label::after{content:'';position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:rgba(255,255,255,.95)}
 .label .ic{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:14px}
-.label:not(.found) .nm::after{content:' ?';color:#d39b00;font-weight:800}
 .label:hover,.label.sel{background:#3070b3;color:#fff}
 .label:hover::after,.label.sel::after{border-top-color:#3070b3}
 
@@ -108,9 +102,7 @@ kbd{font-family:inherit;font-size:12px;background:rgba(48,112,179,.12);border-ra
 
 <div id="hud" class="glass">
   <h1>🎓 Campus Explorer</h1>
-  <div class="sub">欧式城市校园 · 走遍每个角落赚学分</div>
-  <div class="progtxt"><span>学分进度</span><span id="progN">0 / 0 ECTS</span></div>
-  <div class="prog"><i id="progBar"></i></div>
+  <div class="sub">欧式城市校园 · 随便走走，到处看看</div>
 </div>
 
 <div id="places" class="glass"></div>
@@ -148,13 +140,13 @@ kbd{font-family:inherit;font-size:12px;background:rgba(48,112,179,.12);border-ra
 <div id="help">
   <div class="card glass">
     <h2>欢迎来到校园 👋</h2>
-    <p class="lead">一座沿着 Neckar 河的欧式城市校园，灵感来自 TUM Bildungscampus Heilbronn、Bocconi 和 University of Auckland。铁路斜穿校园，<b>Campusbrücke 校园桥</b>是南北两区之间唯一的通道。走到每个地点的 <b style="color:#c98a00">金色水晶</b> 领取 5 ECTS。</p>
+    <p class="lead">一座沿着 Neckar 河的欧式城市校园，灵感来自 TUM Bildungscampus Heilbronn、Bocconi 和 University of Auckland。铁路斜穿校园，<b>Campusbrücke 校园桥</b>是南北两区之间唯一的通道。从左边的地点列表或地图上的标签挑一个地方，看介绍、走过去，或者凑近看看。</p>
     <table>
       <tr><td>旋转视角</td><td>鼠标左键拖动 / 单指拖动</td></tr>
       <tr><td>平移地图</td><td>右键拖动 / 双指拖动</td></tr>
       <tr><td>放大缩小</td><td>滚轮 / 双指捏合</td></tr>
       <tr><td>移动角色</td><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或方向键，<kbd>Shift</kbd> 跑</td></tr>
-      <tr><td>点地面 / 桥面</td><td>自动寻路走过去（过铁路会自己走校园桥）</td></tr>
+      <tr><td>点地面 / 桥面 / 草坡</td><td>自动寻路走过去（过铁路会自己坐电梯走校园桥）</td></tr>
       <tr><td>点建筑 / 标签</td><td>查看介绍、一键前往</td></tr>
       <tr><td>快捷键</td><td><kbd>N</kbd> 昼夜 · <kbd>Q</kbd> 画质 · <kbd>F</kbd> 跟随 · <kbd>R</kbd> 全景</td></tr>
     </table>
@@ -447,9 +439,17 @@ function distToLine(x, z, line) { let best = 1e9; for (let i = 1; i < line.lengt
   const t = clamp(((x - ax) * vx + (z - az) * vz) / L2, 0, 1); best = Math.min(best, Math.hypot(x - ax - vx * t, z - az - vz * t)); } return best; }
 
 /* ================= ground ================= */
-const fields = flat(0, 0, 6000, 6000, (() => { const t = grassTex.clone(); t.needsUpdate = true; t.repeat.set(1 / 30, 1 / 30); return std('#ffffff', { map: t, roughness: 1 }); })(), -.1);
-const cityGround = flat(0, 0, 2200, 2200, std('#9a968f', { roughness: 1 }), -.05); WALK.push(cityGround);
-const campusPave = flat(0, 0, BOUND.x1 - BOUND.x0 + 10, BOUND.z1 - BOUND.z0 + 10, worldTex(pavingTex, 10), .02); WALK.push(campusPave);
+// openings in the ground for the Mensa's stairwell and light well
+const SW = { x0: PX(568, 0)[0], x1: PX(602, 0)[0], z0: PX(0, 900)[1], z1: PX(0, 928)[1], depth: 4.2 };
+const LW = { c: PX(578, 985), rx: 3.6, rz: 6.5, depth: 4.5 };
+const GROUND_HOLES = [[[SW.x0 - .15, SW.z0 - .15], [SW.x1, SW.z0 - .15], [SW.x1, SW.z1 + .15], [SW.x0 - .15, SW.z1 + .15]],
+  Array.from({ length: 48 }, (_, i) => [LW.c[0] + Math.cos(i / 48 * 6.2832) * LW.rx, LW.c[1] + Math.sin(i / 48 * 6.2832) * LW.rz])];
+function flatHoles(x, z, w, d, mat, y) { const V = (a, b) => new THREE.Vector2(a, -b), s = new THREE.Shape([V(x - w / 2, z - d / 2), V(x + w / 2, z - d / 2), V(x + w / 2, z + d / 2), V(x - w / 2, z + d / 2)]);
+  GROUND_HOLES.forEach(h => s.holes.push(new THREE.Path(h.map(([a, b]) => V(a, b))))); const g = new THREE.ShapeGeometry(s); g.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(g, mat); m.position.y = y; m.receiveShadow = true; scene.add(m); return m; }
+const fields = flatHoles(0, 0, 6000, 6000, (() => { const t = grassTex.clone(); t.needsUpdate = true; t.repeat.set(1 / 30, 1 / 30); return std('#ffffff', { map: t, roughness: 1 }); })(), -.1);
+const cityGround = flatHoles(0, 0, 2200, 2200, std('#9a968f', { roughness: 1 }), -.05); WALK.push(cityGround);
+const campusPave = flatHoles(0, 0, BOUND.x1 - BOUND.x0 + 10, BOUND.z1 - BOUND.z0 + 10, worldTex(pavingTex, 10), .02); WALK.push(campusPave);
 
 /* river Neckar */
 const RIVER_E = pxPoly([[305, -800], [300, 0], [270, 200], [250, 400], [235, 600], [225, 800], [210, 1000], [170, 1200], [110, 1350], [40, 1430], [-60, 1480]]);
@@ -477,7 +477,7 @@ const lawnMat = () => worldTex(grassTex, 30, { roughness: 1 });
 const LAWNM = {};
 for (const k in LAWN_POLYS) { LAWNM[k] = polyMesh(LAWN_POLYS[k], lawnMat(), .06); WALK.push(LAWNM[k]); }
 
-/* roads (asphalt) + paths */
+/* campus ways (former roads, now car-free) + paths */
 const ROADS = [
   [[625, 1078], [622, 520], [640, 440], [690, 400], [760, 388], [1110, 388], [1170, 405], [1195, 460], [1197, 840], [1175, 875], [1110, 902], [700, 1052], [638, 1074]],
   [[640, 440], [610, 300], [560, 140], [500, -60]],
@@ -488,8 +488,9 @@ const ROADS = [
   [[525, 2045], [800, 2050], [1050, 2045], [1250, 1960], [1420, 1850], [1565, 1690], [1700, 1590]],
 ].map(r => smoothLine(pxPoly(r), 2));
 const roadMat = worldTex(asphaltTex, 10);
-ROADS.forEach(r => ribbon(r, 8, roadMat, .045));
-ROADS.forEach(r => { for (let i = 0; i < r.length - 1; i += 3) { const [x, z] = r[i], [x2, z2] = r[i + 1]; bb(MAT.white2, x, .055, z, .18, .02, 1.6, null, Math.atan2(x2 - x, z2 - z)); } });
+// the campus is car-free: the former roads are plain shared foot/bike ways (no lane markings, no crossings)
+const wayMat = worldTex(lightPaveTex, 8);
+ROADS.forEach(r => WALK.push(ribbon(r, 8, wayMat, .045)));
 const PATHS = [
   [[305, -60], [300, 0], [280, 200], [262, 400], [250, 600], [242, 800], [232, 1000], [205, 1200], [168, 1330]],
   [[270, 452], [620, 452]], [[270, 772], [620, 772]],
@@ -502,15 +503,6 @@ const PATHS = [
 ].map((p, i) => ({ line: smoothLine(pxPoly(p), 2), w: i === 0 ? 9 : 4 }));
 const pathMat = worldTex(lightPaveTex, 8), gravelMat = worldTex(gravelTex, 6);
 PATHS.forEach((p, i) => WALK.push(ribbon(p.line, p.w, i >= 11 && i <= 12 ? gravelMat : pathMat, .075)));
-// zebra crossings
-function zebra(px, py) {
-  const [x, z] = PX(px, py); let best = null, bd = 1e9;
-  for (const r of ROADS) for (let i = 1; i < r.length; i++) { const d = Math.hypot(r[i][0] - x, r[i][1] - z); if (d < bd) { bd = d; best = [r[i - 1], r[i]]; } }
-  const dx = best[1][0] - best[0][0], dz = best[1][1] - best[0][1], L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L, ang = Math.atan2(ux, uz);
-  const [cx, cz] = best[1];
-  for (let k = -3; k <= 3; k++) bb(MAT.white2, cx - uz * k * 1.1, .06, cz + ux * k * 1.1, .55, .02, 3.2, null, ang);
-}
-[[622, 630], [622, 860], [1197, 520], [1197, 700], [1060, 922], [700, 1420], [527, 1990], [560, 2048], [1050, 1500], [1050, 1800], [1300, 1295]].forEach(p => zebra(...p));
 
 /* ================= railway (diagonal) ================= */
 // four tracks at 4.25 m spacing; the corridor was widened 5.6 m to the south (north fence unchanged)
@@ -595,7 +587,7 @@ function facadeSign(text, x, y, z, ry, w) {
 }
 function glassLink(r, y0, h) { const m = mesh(new THREE.BoxGeometry(r.w, h, r.d), MAT.linkGlass, r.x, y0 + h / 2, r.z); bb(MAT.metal, r.x, y0, r.z, r.w + .3, .3, r.d + .3); bb(MAT.metal, r.x, y0 + h, r.z, r.w + .3, .3, r.d + .3); return m; }
 let SHARED = null;
-function addLoc(o) { if (!SHARED) SHARED = new Set(Object.values(MAT)); o.meshes.forEach(m => { m.material = Array.isArray(m.material) ? m.material.map(e => SHARED.has(e) ? e.clone() : e) : SHARED.has(m.material) ? m.material.clone() : m.material; m.userData.loc = o; PICK.push(m); }); o.found = false; LOCS.push(o); }
+function addLoc(o) { if (!SHARED) SHARED = new Set(Object.values(MAT)); o.meshes.forEach(m => { m.material = Array.isArray(m.material) ? m.material.map(e => SHARED.has(e) ? e.clone() : e) : SHARED.has(m.material) ? m.material.clone() : m.material; m.userData.loc = o; PICK.push(m); }); LOCS.push(o); }
 const E = (px, py) => PX(px, py);
 
 /* ================= NORTH CAMPUS ================= */
@@ -621,24 +613,115 @@ addLoc({ id: 'teachC', zone: '学术', icon: '📗', color: '#f3dcd2', name: '�
   desc: '北区最靠河的一栋五层红砖教学楼，有一个 400 座的大讲堂和一排朝河的小组讨论室。', insp: 'Bildungscampus 红砖 + 落地窗风格', meshes: [tC.core] });
 
 const RL = R(330, 500, 535, 745);
-const lib = B(RL, { floors: 4, style: 'concrete', roof: 'green', sign: 'LIV  BIBLIOTHEK', entrance: [RL.x + RL.w / 2 + 1.4, RL.z, 2.4, 10] });
+const lib = B(RL, { floors: 6, style: 'concrete', roof: 'green', sign: 'LIV  BIBLIOTHEK', entrance: [RL.x + RL.w / 2 + 1.4, RL.z, 2.4, 10] });
 const libW1 = B(R(295, 572, 330, 665), { floors: 2, style: 'concrete', roof: 'green', noUnits: true });
 const libW2 = B(R(535, 585, 565, 665), { floors: 2, style: 'concrete', roof: 'green', noUnits: true });
 addLoc({ id: 'lib', zone: '学术', icon: '📚', color: '#e3edf5', name: 'LIV 图书馆', de: 'Bibliothek', x: RL.x, z: RL.z, h: lib.H + 3, r: 26, entry: E(585, 560),
-  desc: '24 小时开放的学习中心，四层通高的落地玻璃。二楼有一条玻璃连廊直通 Mensa，复习饿了不用下楼。', insp: 'Bildungscampus LIV', meshes: [lib.core, libW1.core, libW2.core] });
+  desc: '24 小时开放的学习中心，六层楼，立面是一整片通高的落地玻璃，两侧各接一栋两层的小翼楼。往南穿过广场就是 Mensa 的草坡。', insp: 'Bildungscampus LIV', meshes: [lib.core, libW1.core, libW2.core] });
 
-const RM = R(370, 795, 535, 1040);
-const mensa = B(RM, { floors: 2, style: 'curtain', gf: 5.2, fh: 4, roof: 'green', sign: 'MENSA', entrance: [RM.x + RM.w / 2 + 1.4, RM.z, 2.4, 10] });
-for (const [ox, oz, w2, d2] of [[0, -RM.d / 2 - 1.5, RM.w + 6, 3], [0, RM.d / 2 + 1.5, RM.w + 6, 3], [-RM.w / 2 - 1.5, 0, 3, RM.d], [RM.w / 2 + 1.5, 0, 3, RM.d]]) bb(MAT.concrete, RM.x + ox, mensa.H + .2, RM.z + oz, w2, .5, d2);
-const linkLM = glassLink(R(475, 745, 515, 795), 5.2, 3.6);
-// outdoor tables west of Mensa
+/* ================= MENSA: two walkable grass hills over an underground dining hall (Auer Weber, 2020) ================= */
+// Big hill (east) rises from the plaza to a thin lip over a recessed, curved glass facade facing the ring path; small
+// dome hill (west). On the plaza beside the facade: open stairwell down to the hall, oval glass light well, glass lift.
+// The hall itself (indoor visit) is not built yet: stairwell, lift and doors are closed for now.
+const closedCurve = (ctrl, perSeg = 10) => { const c = new THREE.CatmullRomCurve3(ctrl.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal'), n = ctrl.length, out = [];
+  for (let i = 0; i < n; i++) for (let k = 0; k < perSeg; k++) { const v = c.getPoint((i + k / perSeg) / n); out.push([v.x, v.z]); } return out; };
+const segDist = (x, z, line) => { let best = { d: 1e9, t: 0 }, acc = 0; const L = [];
+  for (let i = 1; i < line.length; i++) L.push(Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1])); const tot = L.reduce((a, b) => a + b, 0);
+  for (let i = 1; i < line.length; i++) { const [ax, az] = line[i - 1], vx = line[i][0] - ax, vz = line[i][1] - az, l2 = vx * vx + vz * vz || 1, t = clamp(((x - ax) * vx + (z - az) * vz) / l2, 0, 1), d = Math.hypot(x - ax - vx * t, z - az - vz * t);
+    if (d < best.d) best = { d, t: (acc + L[i - 1] * t) / tot }; acc += L[i - 1]; } return best; };
+// big hill outline (closed), first three control points = the facade, south → north
+const BIG_CTRL = pxPoly([[555, 978], [562, 918], [558, 858], [540, 813], [490, 800], [420, 803], [360, 813], [350, 848], [345, 908], [348, 978], [370, 1028], [410, 1046], [480, 1043], [535, 1023]]);
+const BIG = closedCurve(BIG_CTRL), PER = 10, FAC = BIG.slice(0, 2 * PER + 1), BACK = BIG.slice(2 * PER).concat([BIG[0]]);
+const HLIP = t => .3 + 4.4 * Math.pow(Math.sin(Math.PI * clamp(t, 0, 1)), .6);
+const bigRaw = (x, z) => { const f = segDist(x, z, FAC), b = segDist(x, z, BACK), w = b.d / (b.d + f.d + 1e-6); return .15 + HLIP(f.t) * Math.pow(w, 1.15); };
+const SMALL = closedCurve(pxPoly([[305, 878], [338, 890], [352, 935], [345, 985], [312, 1006], [272, 998], [258, 950], [266, 900]]));
+const SMALL_C = PX(305, 942);
+// light 3×3 blur of the height fields (removes the crease along the distance-field ridge)
+const blurH = f => (x, z) => { let s = 0; for (const dx of [-1.6, 0, 1.6]) for (const dz of [-1.6, 0, 1.6]) s += f(x + dx, z + dz); return s / 9; };
+const SMALL_LOOP = SMALL.concat([SMALL[0]]);
+const smallRaw = (x, z) => { const b = segDist(x, z, SMALL_LOOP).d; return .15 + 2.5 * (1 - Math.pow(1 - clamp(b / 7, 0, 1), 2)); };
+const bigH = blurH(bigRaw), smallH = blurH(smallRaw);
+// lawn mesh: rings shrinking from the outline to an inner centre (both hills are star-shaped around it)
+function hillMesh(outline, c, hf, rings = 16) {
+  const n = outline.length, pos = [], uv = [], idx = [];
+  for (let k = 0; k < rings; k++) { const f = 1 - k / rings;
+    for (let i = 0; i < n; i++) { const x = c[0] + (outline[i][0] - c[0]) * f, z = c[1] + (outline[i][1] - c[1]) * f; pos.push(x, hf(x, z), z); uv.push(x, -z); } }
+  const ctr = rings * n; pos.push(c[0], hf(c[0], c[1]), c[1]); uv.push(c[0], -c[1]);
+  let area = 0; for (let i = 0; i < n; i++) { const [x1, z1] = outline[i], [x2, z2] = outline[(i + 1) % n]; area += x1 * z2 - x2 * z1; }
+  const tri = (a, b, c2) => area > 0 ? idx.push(a, c2, b) : idx.push(a, b, c2);
+  for (let k = 0; k < rings; k++) for (let i = 0; i < n; i++) { const a = k * n + i, b = k * n + (i + 1) % n;
+    if (k < rings - 1) { const c2 = a + n, d = b + n; tri(a, b, c2); tri(b, d, c2); } else tri(a, b, ctr); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, worldTex(grassTex, 12, { roughness: 1 })); m.receiveShadow = true; scene.add(m); return m;
+}
+const bigHill = hillMesh(BIG, PX(452, 925), bigH), smallHill = hillMesh(SMALL, SMALL_C, smallH, 12);
+// stone curb around both hills (except under the lip)
+function curb(line, hf) { const pos = [], idx = [];
+  line.forEach(([x, z], i) => { pos.push(x, -.02, z, x, hf(x, z) + .02, z); if (i) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); } });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, std('#cfcbc3', { roughness: .8, side: THREE.DoubleSide })); m.userData.static = true; m.receiveShadow = true; scene.add(m); }
+curb(BACK, bigH); curb(SMALL.concat([SMALL[0]]), smallH);
+// facade: white fascia at the lip, soffit, recessed glass wall with mullions, dark interior behind, glass balustrade on top
+{ const FH = .35, IN = .9, BK = 3.2, fasc = [], glass = [], soff = [], back = [], rail = [];
+  const inward = i => { const a = FAC[Math.max(0, i - 1)], b = FAC[Math.min(FAC.length - 1, i + 1)], dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz); return [dz / l, -dx / l]; };
+  // make sure "inward" points into the hill
+  const [tx, tz] = inward(PER), probe = [FAC[PER][0] + tx * 3, FAC[PER][1] + tz * 3], sgn = inPoly(probe[0], probe[1], BIG) ? 1 : -1;
+  const quad = (arr, a, b, c, d) => arr.push(...a, ...b, ...c, ...a, ...c, ...d);
+  for (let i = 1; i < FAC.length; i++) {
+    const P = [FAC[i - 1], FAC[i]], N = [inward(i - 1), inward(i)].map(([x, z]) => [x * sgn, z * sgn]), H = P.map(([x, z]) => bigH(x, z));
+    const at = (j, off, y) => [P[j][0] + N[j][0] * off, y, P[j][1] + N[j][1] * off];
+    quad(fasc, at(0, 0, H[0] - FH), at(1, 0, H[1] - FH), at(1, 0, H[1] + .02), at(0, 0, H[0] + .02));
+    quad(soff, at(0, 0, H[0] - FH), at(0, IN, H[0] - FH), at(1, IN, H[1] - FH), at(1, 0, H[1] - FH));
+    if (H[0] > 1.1 && H[1] > 1.1) {
+      quad(glass, at(0, IN, 0), at(1, IN, 0), at(1, IN, H[1] - FH), at(0, IN, H[0] - FH));
+      quad(back, at(0, BK, 0), at(1, BK, 0), at(1, BK, H[1] - FH), at(0, BK, H[0] - FH));
+      quad(soff, at(0, IN, H[0] - FH), at(0, BK, H[0] - FH), at(1, BK, H[1] - FH), at(1, IN, H[1] - FH));
+      quad(rail, at(0, .15, H[0]), at(1, .15, H[1]), at(1, .15, H[1] + 1), at(0, .15, H[0] + 1));
+      if (i % 3 === 0) { const [x, , z] = at(0, IN - .05, 0); bb(MAT.frame, x, (H[0] - FH) / 2, z, .08, H[0] - FH, .08); }
+      // walls of the hill can't be walked through at ground level
+      const [ax, az] = P[0], [bx, bz] = P[1], cx = (ax + bx) / 2, cz = (az + bz) / 2, l = Math.hypot(bx - ax, bz - az);
+      COLL.push({ t: 'o', cx: cx + N[0][0] * .5, cz: cz + N[0][1] * .5, ax: (bx - ax) / l, az: (bz - az) / l, hl: l / 2 + .05, hw: .55, top: Math.min(H[0], H[1]) - .5 });
+    } }
+  const build = (arr, mat, cast = false) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.userData.static = true; m.castShadow = cast; m.receiveShadow = true; scene.add(m); return m; };
+  build(fasc, std('#ecebe6', { roughness: .45, side: THREE.DoubleSide }), true); build(soff, std('#dcdad4', { roughness: .6, side: THREE.DoubleSide }));
+  const hall = new THREE.MeshStandardMaterial({ color: '#3a3f44', roughness: .8, emissive: new THREE.Color('#ffd9a8'), emissiveIntensity: 0, side: THREE.DoubleSide }); nightMats.push({ m: hall, k: .5 });
+  build(back, hall); var mensaGlass = build(glass, new THREE.MeshPhysicalMaterial({ color: '#9fb9c2', metalness: .3, roughness: .05, transparent: true, opacity: .45, side: THREE.DoubleSide, depthWrite: false }));
+  build(rail, MAT.railGlass);
+}
+SURF.push({ t: 'hill', pts: BIG, h: bigH }, { t: 'hill', pts: SMALL, h: smallH });
+WALK.push(bigHill, smallHill);
+// open stairwell beside the facade: 14 steps down to a glass door into the hall (gated until the interior exists)
+{ const n = 14, len = SW.x1 - SW.x0 - 1.6, wz = SW.z1 - SW.z0, cz = (SW.z0 + SW.z1) / 2;
+  for (let k = 0; k < n; k++) { const x = SW.x1 - (k + .5) * len / n, top = -(k + 1) * SW.depth / n; mesh(new THREE.BoxGeometry(len / n + .02, .3, wz - .1), MAT.concrete, x, top - .15, cz); }
+  mesh(new THREE.BoxGeometry(1.6, .3, wz - .1), MAT.concrete, SW.x0 + .8, -SW.depth - .15, cz);
+  for (const [x, z, w, d] of [[(SW.x0 + SW.x1) / 2, SW.z0, SW.x1 - SW.x0, .3], [(SW.x0 + SW.x1) / 2, SW.z1, SW.x1 - SW.x0, .3], [SW.x0, cz, .3, wz]]) mesh(new THREE.BoxGeometry(w, SW.depth + .3, d), MAT.concrete, x, -SW.depth / 2, z);
+  const door = mesh(new THREE.BoxGeometry(.08, 2.6, wz - 1.2), new THREE.MeshPhysicalMaterial({ color: '#2b3a44', metalness: .5, roughness: .1, emissive: new THREE.Color('#ffd9a8'), emissiveIntensity: 0 }), SW.x0 + .2, -SW.depth + 1.3, cz, false); nightMats.push({ m: door.material, k: .6 });
+  for (const z of [SW.z0, SW.z1]) mesh(new THREE.BoxGeometry(SW.x1 - SW.x0, 1.05, .04), MAT.railGlass, (SW.x0 + SW.x1) / 2, .55, z, false);
+  mesh(new THREE.BoxGeometry(.04, 1.05, wz), MAT.railGlass, SW.x0, .55, cz, false);
+  mesh(new THREE.BoxGeometry(.06, 1.05, wz), MAT.steel, SW.x1 - .1, .55, cz, false);              // closed gate at the top of the stairs
+  COLL.push({ t: 'r', minX: SW.x0 - .2, maxX: SW.x1, minZ: SW.z0 - .2, maxZ: SW.z1 + .2, top: 99 }); }
+// oval light well on the plaza (as in the photo): glass balustrade around an opening down into the hall
+{ const ell = (r, h, mat, y, side) => { const g = new THREE.CylinderGeometry(1, 1, h, 48, 1, true); const m = new THREE.Mesh(g, mat); m.scale.set(LW.rx + r, 1, LW.rz + r); m.position.set(LW.c[0], y, LW.c[1]); m.userData.static = true; scene.add(m); return m; };
+  ell(0, LW.depth, std('#d9d6cf', { roughness: .8, side: THREE.BackSide }), -LW.depth / 2);
+  ell(0, 1.1, MAT.railGlass, .55); ell(.02, .06, MAT.steel, 1.1);
+  const fl = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshStandardMaterial({ color: '#cbbfa8', roughness: .7, emissive: new THREE.Color('#ffdcb0'), emissiveIntensity: 0 })); nightMats.push({ m: fl.material, k: .5 });
+  fl.rotation.x = -Math.PI / 2; fl.scale.set(LW.rx, LW.rz, 1); fl.position.set(LW.c[0], -LW.depth + .01, LW.c[1]); scene.add(fl);
+  for (const [dx, dz] of [[-1.2, -3], [1.1, -.6], [-.9, 2], [1, 3.6]]) { mesh(new THREE.BoxGeometry(1.4, .75, .8), MAT.white, LW.c[0] + dx, -LW.depth + .38, LW.c[1] + dz, false); }
+  COLL.push({ t: 'p', pts: Array.from({ length: 24 }, (_, i) => [LW.c[0] + Math.cos(i / 24 * 6.283) * (LW.rx + .2), LW.c[1] + Math.sin(i / 24 * 6.283) * (LW.rz + .2)]), top: 99 }); }
+// glass lift at the south-east corner (to the hall below; closed for now)
+const LFT = PX(530, 1003);
+{ mesh(new THREE.BoxGeometry(2.6, 3.4, 2.6), MAT.linkGlass, LFT[0], 1.7, LFT[1]);
+  for (const [x, z] of [[-1.3, -1.3], [1.3, -1.3], [-1.3, 1.3], [1.3, 1.3]]) bb(MAT.steel, LFT[0] + x, 1.7, LFT[1] + z, .12, 3.4, .12);
+  bb(MAT.steel, LFT[0], 3.45, LFT[1], 2.8, .15, 2.8); addRect(LFT[0], LFT[1], 2.8, 2.8, 99); }
+// outdoor seating north of the hills
 const umbCols = ['#e9e4d8', '#e9e4d8', '#2f6a99'];
-for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) { const [tx, tz] = PX(285 + j * 50, 830 + i * 50);
+for (const [px, py] of [[270, 800], [300, 790], [330, 812], [282, 836], [262, 860]]) { const [tx, tz] = PX(px, py);
   mesh(new THREE.CylinderGeometry(.6, .6, .06, 14), MAT.white, tx, .78, tz); bb(MAT.metal, tx, .4, tz, .08, .8, .08);
-  mesh(new THREE.ConeGeometry(2.3, .8, 8), std(umbCols[(i + j) % 3], { roughness: .9 }), tx, 2.75, tz); bb(MAT.metal, tx, 1.6, tz, .06, 2.4, .06); addRect(tx, tz, 1.4, 1.4, 1); }
-for (let i = 0; i < 3; i++) { const [tx, tz] = PX(400 + i * 40, 1075); bb(MAT.timber, tx, .45, tz, 2.4, .1, .8); bb(MAT.timber, tx, .45, tz + 1.2, 2.4, .1, .4); bb(MAT.timber, tx, .45, tz - 1.2, 2.4, .1, .4); }
-addLoc({ id: 'mensa', zone: '学生生活', icon: '🍝', color: '#e3edf5', name: 'Mensa 食堂', de: 'Mensa', x: RM.x, z: RM.z, h: mensa.H + 3, r: 26, entry: E(580, 960),
-  desc: '全玻璃的两层食堂，屋顶外挑做遮阳廊。西侧是一大片带遮阳伞的露天座位，往南几步就是校园桥。', insp: 'Bildungscampus Mensa', meshes: [mensa.core, linkLM] });
+  mesh(new THREE.ConeGeometry(2.3, .8, 8), std(umbCols[(px + py) % 3], { roughness: .9 }), tx, 2.75, tz); bb(MAT.metal, tx, 1.6, tz, .06, 2.4, .06); addRect(tx, tz, 1.4, 1.4, 1); }
+const RM = R(372, 806, 538, 1026);   // footprint of the underground hall (dashed on the site plan)
+addLoc({ id: 'mensa', zone: '学生生活', icon: '🍝', color: '#dcebd2', name: 'Mensa 食堂', de: 'Mensa', x: PX(455, 925)[0], z: PX(455, 925)[1], h: 9, r: 28, entry: E(588, 878),
+  desc: '2020 年启用，Auer Weber 设计。两座有机曲线的草坡从铺装的校园广场上升起，可以直接走上去坐着晒太阳；餐厅和厨房藏在大草坡下面，500 多个座位。大草坡东侧翘起一道薄薄的边檐，下面是一整段弧形玻璃立面；旁边的开放楼梯和东南角的玻璃电梯通往地下大厅，广场上的椭圆形玻璃采光井把阳光引进去。（室内参观还没做）',
+  insp: 'Auer Weber · Mensa Bildungscampus Heilbronn', meshes: [bigHill, smallHill] });
 
 // Research tower with Selected floors
 const RT = R(690, 435, 790, 640);
@@ -885,7 +968,7 @@ function updateLift(dt) {
 const midA = (DECK.a[DECK.P.findIndex(p => railDist(...p) > 0)]), [midX, midZ] = deckAt(midA);
 addLoc({ id: 'bridge', zone: '城市连接', icon: '🌉', color: '#e3edf5', name: 'Campusbrücke 校园桥', de: 'Campusbrücke', x: midX, z: midZ, h: 12, r: 18,
   entry: [midX, midZ], entryY: BRH,
-  desc: '全校唯一一座跨越铁路的人行桥，形状、长度和与铁轨的相对位置都照着真实的 Campusbrücke：北端是一座穿孔玻璃电梯塔，桥面朝东南笔直地越过环路和北侧铁轨，在南侧铁轨上方拐一个 62° 的弯转向南，再一路高架越过南区，最后一段短楼梯落在学生公寓门前。站在桥中间能看到火车从脚下经过。', insp: 'Bildungscampus Heilbronn 的 Campusbrücke 和玻璃电梯塔', meshes: [slab, deck, roofCap] });
+  desc: '全校唯一一座跨越铁路的人行桥，形状、长度和与铁轨的相对位置都照着真实的 Campusbrücke：北端是一座穿孔玻璃电梯塔，桥面朝东南笔直地越过环形步道和北侧铁轨，在南侧铁轨上方拐一个 62° 的弯转向南，再一路高架越过南区，最后一段短楼梯落在学生公寓门前。站在桥中间能看到火车从脚下经过。', insp: 'Bildungscampus Heilbronn 的 Campusbrücke 和玻璃电梯塔', meshes: [slab, deck, roofCap] });
 
 /* ================= SOUTH-WEST ================= */
 const RDd = R(200, 1550, 430, 1765);
@@ -1165,7 +1248,7 @@ const arrow = new THREE.Mesh(new THREE.ConeGeometry(.4, .8, 4), new THREE.MeshSt
 const pRing = new THREE.Mesh(new THREE.RingGeometry(.7, .9, 32), new THREE.MeshBasicMaterial({ color: '#ffcc33', transparent: true, opacity: .9, depthWrite: false })); pRing.rotation.x = -Math.PI / 2; pRing.position.y = .1; player.add(pRing);
 { const [sx, sz] = PX(600, 1070); player.position.set(sx, 0, sz); player.rotation.y = Math.PI * .8; } scene.add(player);
 // NPC routes: polylines (world) + optional height fn
-const npcRoutes = [...ROADS.map(r => ({ line: r, off: 5.9 })), { line: PATHS[0].line, off: 0 }, ...PATHS.slice(3, 11).map(p => ({ line: p.line, off: 0 })),
+const npcRoutes = [...ROADS.map(r => ({ line: r, off: 2.4 })), { line: PATHS[0].line, off: 0 }, ...PATHS.slice(3, 11).map(p => ({ line: p.line, off: 0 })),
   { line: [...DECK.P.filter((_, i) => i % 4 === 0 && DECK.a[i] > 3.2), [S_END.x, S_END.z]], off: 0, bridge: true }];
 npcRoutes.forEach(r => { r.cum = [0]; for (let i = 1; i < r.line.length; i++) r.cum.push(r.cum[i - 1] + Math.hypot(r.line[i][0] - r.line[i - 1][0], r.line[i][1] - r.line[i - 1][1])); r.L = r.cum[r.cum.length - 1]; });
 function routeAt(r, d) { let i = 1; while (i < r.cum.length - 1 && r.cum[i] < d) i++; const t = (d - r.cum[i - 1]) / (r.cum[i] - r.cum[i - 1] || 1); const [ax, az] = r.line[i - 1], [bx2, bz2] = r.line[i];
@@ -1198,12 +1281,6 @@ for (let i = 0; i < N_SIT; i++) { const key = i < 9 ? 'central' : i < 14 ? 'sout
   do { x = rr(Math.min(...P.map(p => p[0])), Math.max(...P.map(p => p[0]))); z = rr(Math.min(...P.map(p => p[1])), Math.max(...P.map(p => p[1]))); } while ((!inPoly(x, z, P) || !freeAt(x, z, .5)) && ++k < 40);
   poseCrowd(N_WALK + i, x, .06, z, rnd() * 6, 0, true); }
 
-/* ================= crystals ================= */
-const crystalGeo = new THREE.OctahedronGeometry(.8, 0), beamGeo = new THREE.CylinderGeometry(.45, .45, 40, 12, 1, true);
-LOCS.forEach(l => { const g = new THREE.Group();
-  const c = new THREE.Mesh(crystalGeo, new THREE.MeshStandardMaterial({ color: '#ffd34d', emissive: '#ffb300', emissiveIntensity: 1.1, roughness: .2, metalness: .3 })); c.position.y = 1.8;
-  const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: '#ffd34d', transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })); beam.position.y = 20;
-  g.add(c, beam); g.position.set(l.entry[0], l.entryY || 0, l.entry[1]); scene.add(g); l.marker = g; l.crystal = c; });
 const bursts = [];
 function burst(p) { const m = new THREE.Mesh(new THREE.RingGeometry(.6, 1, 32), new THREE.MeshBasicMaterial({ color: '#ffd34d', transparent: true, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2; m.position.set(p.x, p.y + .3, p.z); scene.add(m); bursts.push({ m, t: 0 }); }
 const selRing = new THREE.Mesh(new THREE.RingGeometry(.96, 1, 96), new THREE.MeshBasicMaterial({ color: '#ffcc33', transparent: true, opacity: 0, depthWrite: false })); selRing.rotation.x = -Math.PI / 2; selRing.position.y = .25; scene.add(selRing);
@@ -1214,7 +1291,6 @@ mergeStatic();
 PICK.forEach(m => (Array.isArray(m.material) ? m.material : [m.material]).forEach(mt => { if (!mt.userData.base) mt.userData.base = mt.color.clone(); }));
 
 /* ================= UI ================= */
-let saved = []; try { saved = JSON.parse(localStorage.getItem('campus3-found') || '[]'); } catch (e) {}
 const ZONE_ORDER = ['历史核心', '学术', '学生生活', '运动', '创业', '城市连接', '公园'];
 LOCS.sort((a, b) => ZONE_ORDER.indexOf(a.zone) - ZONE_ORDER.indexOf(b.zone));
 const placesEl = $('#places'), labelsEl = $('#labels'); let lastZone = '';
@@ -1223,23 +1299,13 @@ LOCS.forEach(l => {
   const it = document.createElement('div'); it.className = 'item'; it.innerHTML = `<div class="ic" style="background:${l.color}">${l.icon}</div><div class="nm">${l.name}<small>${l.de}</small></div><div class="st"></div>`;
   it.onclick = () => { select(l); placesEl.classList.remove('open'); }; placesEl.appendChild(it); l.item = it;
   const lb = document.createElement('div'); lb.className = 'label'; lb.innerHTML = `<span class="ic" style="background:${l.color}">${l.icon}</span><span class="nm">${l.name}</span>`; lb.onclick = () => select(l); labelsEl.appendChild(lb); l.label = lb;
-  if (saved.includes(l.id)) markFound(l, true);
 });
-updateProgress();
-function updateProgress() { const n = LOCS.filter(l => l.found).length; $('#progN').textContent = `${n * 5} / ${LOCS.length * 5} ECTS`; $('#progBar').style.width = (n / LOCS.length * 100) + '%'; }
-function markFound(l, silent) {
-  if (l.found) return; l.found = true; l.marker.visible = false; l.item.classList.add('found'); l.label.classList.add('found');
-  if (!silent) { burst(l.marker.position); const n = LOCS.filter(x => x.found).length;
-    toast(n === LOCS.length ? '🎓 全部地点探索完成，毕业快乐！' : `✨ +5 ECTS · ${l.icon} ${l.name}（${n}/${LOCS.length}）`);
-    try { localStorage.setItem('campus3-found', JSON.stringify(LOCS.filter(x => x.found).map(x => x.id))); } catch (e) {} if (selected === l) fillInfo(l); }
-  updateProgress(); mapDirty = true;
-}
 let toastT; function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
 let selected = null, hovered = null, fly = null, follow = false, route = [], stuckT = 0;
 function setTint(l, k) { if (!l) return; l.meshes.forEach(m => (Array.isArray(m.material) ? m.material : [m.material]).forEach(mt => { if (!mt.color) return; if (!mt.userData.base) mt.userData.base = mt.color.clone(); mt.color.copy(mt.userData.base).multiplyScalar(k); })); }
 function fillInfo(l) {
   $('#infoIc').textContent = l.icon; $('#infoIc').style.background = l.color;
-  $('#infoName').innerHTML = l.name + (l.found ? '<span class="badge f">已探索</span>' : '<span class="badge n">+5 ECTS</span>');
+  $('#infoName').textContent = l.name;
   $('#infoDe').textContent = l.de; $('#infoDesc').textContent = l.desc; $('#infoInsp').textContent = l.insp ? '灵感：' + l.insp : '';
   const row = $('#infoRow'); row.querySelectorAll('.extra').forEach(b => b.remove());
   if (l.action) { const b = document.createElement('button'); b.className = 'extra'; b.textContent = l.action.label; b.onclick = l.action.fn; row.appendChild(b); }
@@ -1300,10 +1366,11 @@ const PR = .45, STEP = 1.3;
 function surfContains(s, x, z, m = 0) {
   if (s.t === 'c') return Math.hypot(x - s.cx, z - s.cz) < s.r + m;
   if (s.t === 'deck') { const q = deckProj(x, z); return !!q && q.d <= s.hw + m; }
+  if (s.t === 'hill') return inPoly(x, z, s.pts) || m > 0 && distToLine(x, z, s.pts) < m;
   if (s.t === 'o') { const dx = x - s.cx, dz = z - s.cz, a = dx * s.ax + dz * s.az, u = -dx * s.az + dz * s.ax; return Math.abs(a) <= s.hl + m && Math.abs(u) <= s.hw + m; }
   return x >= s.minX - m && x <= s.maxX + m && z >= s.minZ - m && z <= s.maxZ + m;
 }
-function surfH(s, x, z) { if (s.t === 'deck') { const q = deckProj(x, z); return q ? s.h(q.a) : 0; } if (s.t === 'o') { const a = (x - s.cx) * s.ax + (z - s.cz) * s.az; return s.h(a); } return s.h(x, z); }
+function surfH(s, x, z) { if (s.t === 'hill') return s.h(x, z); if (s.t === 'deck') { const q = deckProj(x, z); return q ? s.h(q.a) : 0; } if (s.t === 'o') { const a = (x - s.cx) * s.ax + (z - s.cz) * s.az; return s.h(a); } return s.h(x, z); }
 function surfaceAt(x, z, curY) { let best = Math.abs(curY) <= STEP ? 0 : null;
   for (const s of SURF) { if (!surfContains(s, x, z)) continue; const h = surfH(s, x, z); if (Math.abs(h - curY) <= STEP && (best == null || h > best)) best = h; }
   return best; }
@@ -1409,7 +1476,6 @@ function updatePlayer(dt) {
   const p = player.position; p.y += (p.yTarget - p.y) * Math.min(1, dt * 18);
   animHuman(player, walkPh, moving ? (run ? .8 : .55) : 0);
   arrow.position.y = 3.1 + Math.sin(performance.now() / 300) * .2; arrow.rotation.y += dt * 2;
-  for (const l of LOCS) if (!l.found && Math.hypot(p.x - l.entry[0], p.z - l.entry[1]) < 2.2 && Math.abs(p.y - (l.entryY || 0)) < 2) markFound(l);
 }
 const DSURF = SURF.find(s => s.t === 'deck');
 function updateNPCs(dt) {
@@ -1430,7 +1496,7 @@ const MB = { x0: -172, x1: 172, z0: -225, z1: 225 }, MS = mm.width / (MB.x1 - MB
 const toM = (x, z) => [(x - MB.x0) * MS, (z - MB.z0) * MS];
 const mmStatic = document.createElement('canvas'); mmStatic.width = mm.width; mmStatic.height = mm.height;
 let mapDirty = true;
-const MMB = [[RC_, 'teachC'], [RL, 'lib'], [RM, 'mensa'], [RT, 'tower'], [RA, 'teachAB'], [RB_, 'teachAB'], [R1b, null], [RS, 'shop'], [RH, 'med'], [RF1, 'founders'], [RF2, 'founders'], [SH, 'station'], [RBZ, 'biz'], [CGR, 'garden'],
+const MMB = [[RC_, 'teachC'], [RL, 'lib'], [RT, 'tower'], [RA, 'teachAB'], [RB_, 'teachAB'], [R1b, null], [RS, 'shop'], [RH, 'med'], [RF1, 'founders'], [RF2, 'founders'], [SH, 'station'], [RBZ, 'biz'], [CGR, 'garden'],
   [RDd, 'teachD'], [RSp, 'sport'], ...DORM.map(r => [r, 'dorm']), [RCT, 'clock'], [{ x: TW.x, z: TW.z, w: 10, d: 10 }, 'clock'], ...wings.map(([r]) => [r, 'cloister']), [RAu, 'aula'], [RBg, 'bier'],
   [R(1410, 1720, 1450, 1800), null], [R(1380, 990, 1480, 1090), null]];
 function drawStatic() {
@@ -1440,18 +1506,18 @@ function drawStatic() {
   const poly = (pts, c) => { g.fillStyle = c; g.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = toM(x, z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.fill(); };
   const line = (pts, c, w) => { g.strokeStyle = c; g.lineWidth = w * MS; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = toM(x, z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.stroke(); };
   for (const k in LAWN_POLYS) poly(LAWN_POLYS[k], night ? '#2d4a2a' : '#7fa860');
+  poly(BIG, night ? '#3a5a33' : '#8fbf6a'); poly(SMALL, night ? '#3a5a33' : '#8fbf6a');
   poly(RIVER, night ? '#1b3a55' : '#4f8fbf'); line(STREAM, night ? '#1b3a55' : '#4f8fbf', 5);
-  ROADS.forEach(r => line(r, night ? '#23252a' : '#45484d', 8)); PATHS.forEach(p => line(p.line, night ? '#55524c' : '#cfc7b8', p.w));
+  ROADS.forEach(r => line(r, night ? '#55524c' : '#d8d1c3', 8)); PATHS.forEach(p => line(p.line, night ? '#55524c' : '#cfc7b8', p.w));
   line([[R0[0] - RD[0] * 100, R0[1] - RD[1] * 100], [R1[0] + RD[0] * 100, R1[1] + RD[1] * 100]], night ? '#4a4038' : '#8a7d6c', 2 * FENCE);
   line([TR0, [TR0[0] + TD[0] * 200, TR0[1] + TD[1] * 200]], night ? '#4a4038' : '#8a7d6c', 5);
-  for (const [r, id] of MMB) { const l = id && LOCS.find(q => q.id === id); g.fillStyle = l && l.found ? '#3070b3' : (night ? '#8a909a' : '#e9e6df'); const [x, z] = toM(r.x - r.w / 2, r.z - r.d / 2); g.fillRect(x, z, r.w * MS, r.d * MS); }
+  for (const [r, id] of MMB) { const l = id && LOCS.find(q => q.id === id); g.fillStyle = night ? '#8a909a' : '#e9e6df'; const [x, z] = toM(r.x - r.w / 2, r.z - r.d / 2); g.fillRect(x, z, r.w * MS, r.d * MS); }
   line(DECK.P, '#ff9f1c', BW); { g.save(); const [x, z] = toM(LX, LZ); g.translate(x, z); g.rotate(-Math.atan2(TF[0], TF[1])); g.fillStyle = '#ff9f1c'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; const r = LIFT.half * MS; g.fillRect(-r, -r, 2 * r, 2 * r); g.strokeRect(-r, -r, 2 * r, 2 * r); g.restore(); }
   mapDirty = false;
 }
 function drawMinimap(t) {
   if (mapDirty) drawStatic(); mctx.drawImage(mmStatic, 0, 0);
-  for (const l of LOCS) if (!l.found) { const [x, z] = toM(l.entry[0], l.entry[1]), s = 7 + Math.sin(t * 4) * 1.5; mctx.fillStyle = '#ffcc33'; mctx.strokeStyle = '#7a5a00'; mctx.lineWidth = 2;
-    mctx.beginPath(); mctx.moveTo(x, z - s); mctx.lineTo(x + s * .7, z); mctx.lineTo(x, z + s); mctx.lineTo(x - s * .7, z); mctx.closePath(); mctx.fill(); mctx.stroke(); }
+  for (const l of LOCS) { const [x, z] = toM(l.entry[0], l.entry[1]); mctx.fillStyle = '#ffffff'; mctx.strokeStyle = '#3070b3'; mctx.lineWidth = 2; mctx.beginPath(); mctx.arc(x, z, 4, 0, 7); mctx.fill(); mctx.stroke(); }
   const [cx, cz] = toM(controls.target.x, controls.target.z); camera.getWorldDirection(fwd); const a = Math.atan2(fwd.z, fwd.x), vr = clamp(camera.position.distanceTo(controls.target) * .5, 12, 140) * MS;
   mctx.fillStyle = 'rgba(255,255,255,.3)'; mctx.beginPath(); mctx.moveTo(cx - Math.cos(a) * vr * .8, cz - Math.sin(a) * vr * .8); mctx.arc(cx - Math.cos(a) * vr * .8, cz - Math.sin(a) * vr * .8, vr * 1.6, a - .45, a + .45); mctx.closePath(); mctx.fill();
   const [px, pz] = toM(player.position.x, player.position.z); mctx.save(); mctx.translate(px, pz); mctx.rotate(-player.rotation.y + Math.PI);
@@ -1502,7 +1568,6 @@ function loop() {
     dummy.scale.set(1, 1, 1); dummy.updateMatrix(); carBodyIM.setMatrixAt(i, dummy.matrix); carCabIM.setMatrixAt(i, dummy.matrix); });
   carBodyIM.instanceMatrix.needsUpdate = carCabIM.instanceMatrix.needsUpdate = true;
   boatT += dt * 3; if (boatT > 520) boatT = -260; { const z = -260 + ((boatT + 260) % 520) - 0; boat.position.set(riverMid(z), 0, z); }
-  LOCS.forEach((l, i) => { if (!l.found) { l.crystal.rotation.y += dt * 1.8; l.crystal.position.y = 1.8 + Math.sin(t * 2 + i) * .25; } });
   if (selected) selRing.material.opacity = .55 + Math.sin(t * 4) * .3; else selRing.material.opacity *= .85;
   if (tgtRing.material.opacity > .01) tgtRing.material.opacity *= route.length ? .99 : .85;
   for (let i = bursts.length - 1; i >= 0; i--) { const b = bursts[i]; b.t += dt; b.m.scale.setScalar(1 + b.t * 14); b.m.material.opacity = 1 - b.t / .8; if (b.t > .8) { scene.remove(b.m); bursts.splice(i, 1); } }
