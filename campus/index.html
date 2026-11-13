@@ -466,7 +466,7 @@ COLL.push({ t: 'p', pts: RIVER_COLL.map(([x, z]) => [x + 1.6, z]), top: 99 });
 /* lawns */
 const LAWN_POLYS = {
   central: pxPoly([[648, 418], [1172, 418], [1172, 852], [1112, 884], [700, 1030], [648, 1046]]),
-  south: pxPoly([[820, 1318], [1232, 1282], [1232, 1012], [1120, 1058], [820, 1196]]),
+  south: pxPoly([[820, 1318], [1232, 1282], [1232, 1043], [820, 1225]]),
   dormCourt: pxPoly([[702, 1612], [938, 1612], [938, 1918], [702, 1918]]),
   albert: pxPoly([[1085, 2070], [1262, 1985], [1432, 1875], [1578, 1712], [1680, 1620], [1680, 2230], [1085, 2230]]),
   europaGreen: pxPoly([[1030, 300], [1180, 300], [1180, 478], [1030, 478]]),
@@ -513,26 +513,28 @@ function zebra(px, py) {
 [[622, 630], [622, 860], [1197, 520], [1197, 700], [1060, 922], [700, 1420], [527, 1990], [560, 2048], [1050, 1500], [1050, 1800], [1300, 1295]].forEach(p => zebra(...p));
 
 /* ================= railway (diagonal) ================= */
-const R0 = PX(0, 1490), R1 = PX(1652, 760);
-const RD = (() => { const dx = R1[0] - R0[0], dz = R1[1] - R0[1], L = Math.hypot(dx, dz); return [dx / L, dz / L]; })();
+// four tracks at 4.25 m spacing; the corridor was widened 5.6 m to the south (north fence unchanged)
+const RAIL_SH = 2.8, TRACKS = [-6.375, -2.125, 2.125, 6.375], FENCE = 13.4;
+const RD = (() => { const [a, b] = [PX(0, 1490), PX(1652, 760)], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz); return [dx / L, dz / L]; })();
 const RN = [-RD[1], RD[0]];
+const R0 = (([x, z]) => [x + RN[0] * RAIL_SH, z + RN[1] * RAIL_SH])(PX(0, 1490)), R1 = (([x, z]) => [x + RN[0] * RAIL_SH, z + RN[1] * RAIL_SH])(PX(1652, 760));
 const railSide = (x, z) => Math.sign((x - R0[0]) * RN[0] + (z - R0[1]) * RN[1]);
 const railDist = (x, z) => (x - R0[0]) * RN[0] + (z - R0[1]) * RN[1];
 const RC = [R0[0] + RD[0] * 180, R0[1] + RD[1] * 180];
 const rail = new THREE.Group(); rail.position.set(RC[0], 0, RC[1]); rail.rotation.y = -Math.atan2(RD[1], RD[0]); scene.add(rail);
 const railAdd = (geo, mat, x, y, z, cast = true) => { const m = new THREE.Mesh(geo, mat); m.userData.static = true; m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; rail.add(m); return m; };
-{ const b = new THREE.Mesh(new THREE.PlaneGeometry(1800, 20), texMat(ballastTex, 1800, 20, { scale: 8 })); b.rotation.x = -Math.PI / 2; b.position.y = .06; b.receiveShadow = true; rail.add(b); }
-for (const tz of [-3.6, 3.6]) for (const dz of [-.75, .75]) railAdd(new THREE.BoxGeometry(1800, .16, .14), MAT.steel, 0, .2, tz + dz, false);
-{ const sl = new THREE.InstancedMesh(BOXG, std('#5a5048'), 720); let k = 0;
-  for (let i = 0; i < 360; i++) for (const tz of [-3.6, 3.6]) { dummy.position.set(-900 + i * 5, .1, tz); dummy.scale.set(.3, .14, 2.6); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); sl.setMatrixAt(k++, dummy.matrix); }
+{ const b = new THREE.Mesh(new THREE.PlaneGeometry(1800, 2 * FENCE + .6), texMat(ballastTex, 1800, 2 * FENCE + .6, { scale: 8 })); b.rotation.x = -Math.PI / 2; b.position.y = .06; b.receiveShadow = true; rail.add(b); }
+for (const tz of TRACKS) for (const dz of [-.75, .75]) railAdd(new THREE.BoxGeometry(1800, .16, .14), MAT.steel, 0, .2, tz + dz, false);
+{ const sl = new THREE.InstancedMesh(BOXG, std('#5a5048'), 360 * TRACKS.length); let k = 0;
+  for (let i = 0; i < 360; i++) for (const tz of TRACKS) { dummy.position.set(-900 + i * 5, .1, tz); dummy.scale.set(.3, .14, 2.6); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); sl.setMatrixAt(k++, dummy.matrix); }
   sl.receiveShadow = true; rail.add(sl); }
-for (let x = -400; x <= 400; x += 40) { railAdd(new THREE.BoxGeometry(.3, 6.8, .3), MAT.steel, x, 3.4, -8.5); railAdd(new THREE.BoxGeometry(.2, .2, 11), MAT.steel, x, 6.6, -3.3); }
-for (const tz of [-3.6, 3.6]) railAdd(new THREE.BoxGeometry(1800, .04, .04), MAT.dark, 0, 6.1, tz, false);
-for (const fz of [-10.6, 10.6]) { railAdd(new THREE.BoxGeometry(1800, .06, .06), MAT.metal, 0, 1, fz, false); railAdd(new THREE.BoxGeometry(1800, .06, .06), MAT.metal, 0, 1.9, fz, false);
+for (let x = -400; x <= 400; x += 40) { railAdd(new THREE.BoxGeometry(.3, 6.3, .3), MAT.steel, x, 3.15, -FENCE + 2.5); railAdd(new THREE.BoxGeometry(.2, .2, FENCE + 6.375 - 1.5), MAT.steel, x, 6.15, (6.375 - FENCE + 2.5) / 2 + .5); }
+for (const tz of TRACKS) railAdd(new THREE.BoxGeometry(1800, .04, .04), MAT.dark, 0, 5.95, tz, false);
+for (const fz of [-FENCE, FENCE]) { railAdd(new THREE.BoxGeometry(1800, .06, .06), MAT.metal, 0, 1, fz, false); railAdd(new THREE.BoxGeometry(1800, .06, .06), MAT.metal, 0, 1.9, fz, false);
   const posts = new THREE.InstancedMesh(BOXG, MAT.metal, 340); for (let i = 0; i < 340; i++) { dummy.position.set(-425 + i * 2.5, 1, fz); dummy.scale.set(.06, 2, .06); dummy.updateMatrix(); posts.setMatrixAt(i, dummy.matrix); } rail.add(posts); }
 // rail bridge over the Neckar
-railAdd(new THREE.BoxGeometry(110, 1.4, 11), MAT.concrete, -235, -.2, 0);
-COLL.push({ t: 'o', cx: RC[0], cz: RC[1], ax: RD[0], az: RD[1], hl: 900, hw: 11.2, top: 2.2 });
+railAdd(new THREE.BoxGeometry(110, 1.4, 2 * FENCE + 1), MAT.concrete, -235, -.2, 0);
+COLL.push({ t: 'o', cx: RC[0], cz: RC[1], ax: RD[0], az: RD[1], hl: 900, hw: FENCE + .6, top: 2.2 });
 
 /* ================= building generator ================= */
 const FRAME = {
@@ -747,10 +749,10 @@ addLoc({ id: 'station', zone: '城市连接', icon: '🚋', color: '#e3edf5', na
 /* ================= CAMPUSBRÜCKE (only bridge over the railway) ================= */
 // Measured off Google Maps (Heilbronn): the real line is a 272.7 px straight at 120.9°, a 62° curve of radius 105 px,
 // then a 367 px straight at 182.9°. It is placed relative to the railway exactly as in reality: the six real tracks
-// (137 px between the outer ones) are scaled onto the game's fenced rail corridor (21.2 m), i.e. 0.1547 m per px,
+// are 27.5 px apart; the game's tracks are 4.25 m apart, i.e. 0.1545 m per px, with the real band centred on the game's,
 // and the whole shape is turned so the real rail direction lines up with the game's rail.
 // North end: glass lift tower at 39.2 m from the rail centreline; south end: a short flight of stairs.
-const BW = 4.6, BRH = 7.5, LIFT = { half: 2.3, inner: 1.75, top: BRH + 3.8 }, STAIR_L = 11, KPX = 21.2 / 137;
+const BW = 4.6, BRH = 8.2, LIFT = { half: 2.3, inner: 1.75, top: BRH + 3.8 }, STAIR_L = 11, KPX = 4.25 / 27.5;
 const brg = d => [Math.sin(d * Math.PI / 180), -Math.cos(d * Math.PI / 180)];      // compass bearing → world xz (north = -z)
 const ROT = Math.atan2(RD[0], -RD[1]) * 180 / Math.PI - (90 - 44.25);              // game rail bearing − real rail bearing
 const B0 = 120.9 + ROT, TURN = 62, L1 = 272.7 * KPX, RAD = 105 * KPX, L3 = 367 * KPX;
@@ -817,7 +819,7 @@ const pierAt = q => { const i = Math.round(q / DECK.L * iEnd), [x, z] = DECK.P[i
   const cb = mesh(new THREE.BoxGeometry(.5, .7, 2.2), bridgeGrey, x, top * .42, z); cb.rotation.y = ry;
   COLL.push({ t: 'o', cx: x, cz: z, ax: tx, az: tz, hl: 1.35, hw: .4, top: top }); };
 { const qs = []; for (let q = 7; q < DECK.A0 - 1; q += 9) qs.push(q); qs.push(DECK.A0 - .8);
-  for (const q of qs) { const [x, z] = deckAt(q); if (Math.abs(railDist(x, z)) > 12.8 && ROADS.every(r => distToLine(x, z, r) > 6)) pierAt(q); } }
+  for (const q of qs) { const [x, z] = deckAt(q); if (Math.abs(railDist(x, z)) > FENCE + 2 && ROADS.every(r => distToLine(x, z, r) > 6)) pierAt(q); } }
 // low part of the ramp: can't walk underneath
 for (let i = iA0; i < iEnd; i += 2) if (DECK.H[i] > 1 && DECK.H[i] < 2.6) COLL.push({ t: 'c', cx: DECK.P[i][0], cz: DECK.P[i][1], r: BHW - .2, top: .3 });
 SURF.push({ t: 'deck', hw: BHW - .35, h: q => DECK.hAt(q) });
@@ -1031,7 +1033,7 @@ addLoc({ id: 'park', zone: '公园', icon: '🌷', color: '#dcebd2', name: '维�
 /* ================= trees, lamps, bikes, benches ================= */
 function freeAt(x, z, m) {
   if (x < BOUND.x0 + m || x > BOUND.x1 - m || z < BOUND.z0 + m || z > BOUND.z1 - m) return false;
-  if (inPoly(x, z, RIVER) || Math.abs(railDist(x, z)) < 12 + m) return false;
+  if (inPoly(x, z, RIVER) || Math.abs(railDist(x, z)) < FENCE + 1.4 + m) return false;
   if (blockedAt(x, z, 0, m)) return false;
   if (Math.hypot(x - LIFT_OUT.x, z - LIFT_OUT.z) < 4.5 + m || Math.hypot(x - S_END.x, z - S_END.z) < 3 + m) return false;
   for (const s of SURF) if (surfContains(s, x, z, m)) return false;
@@ -1137,7 +1139,7 @@ carBodyIM.frustumCulled = carCabIM.frustumCulled = false; scene.add(carBodyIM, c
 for (let i = 0; i < 24; i++) { carBodyIM.setColorAt(i, new THREE.Color(pick(carCols))); cars.push({ lane: i % 3, dir: rnd() < .5 ? 1 : -1, t: rr(-650, 650), v: rr(9, 14) }); }
 const train = new THREE.Group(); { const body = std('#f0f0ee', { roughness: .35, metalness: .3 }), red = std('#c5161d'), win = new THREE.MeshStandardMaterial({ color: '#1d2730', roughness: .1, metalness: .6, emissive: new THREE.Color('#ffe2b0'), emissiveIntensity: 0 }); nightMats.push({ m: win, k: 1.2 });
   for (let k = 0; k < 4; k++) { const x = k * 26; for (const [g, m, y] of [[new THREE.BoxGeometry(25, 3.6, 3), body, 2.4], [new THREE.BoxGeometry(23, 1, 3.06), win, 2.9], [new THREE.BoxGeometry(25.02, .5, 3.08), red, 1.2]]) { const mm2 = new THREE.Mesh(g, m); mm2.position.set(x, y, 0); train.add(mm2); } } }
-train.position.set(-700, 0, -3.6); rail.add(train);
+train.position.set(-700, 0, TRACKS[1]); rail.add(train);
 const boat = new THREE.Group(); { const hull = new THREE.Mesh(new THREE.BoxGeometry(5, 1.4, 22), std('#f4f4f2', { roughness: .4 })); hull.position.y = .5; const cab = new THREE.Mesh(new THREE.BoxGeometry(4, 1.8, 13), std('#2b4a63', { roughness: .2, metalness: .5 })); cab.position.set(0, 1.9, -1); boat.add(hull, cab); }
 scene.add(boat); let boatT = 0;
 const riverMid = z => { const e = RIVER_E; for (let i = 1; i < e.length; i++) if (z >= e[i - 1][1] && z <= e[i][1]) { const t = (z - e[i - 1][1]) / (e[i][1] - e[i - 1][1]); return e[i - 1][0] + (e[i][0] - e[i - 1][0]) * t - 25; } return e[0][0] - 25; };
@@ -1440,7 +1442,7 @@ function drawStatic() {
   for (const k in LAWN_POLYS) poly(LAWN_POLYS[k], night ? '#2d4a2a' : '#7fa860');
   poly(RIVER, night ? '#1b3a55' : '#4f8fbf'); line(STREAM, night ? '#1b3a55' : '#4f8fbf', 5);
   ROADS.forEach(r => line(r, night ? '#23252a' : '#45484d', 8)); PATHS.forEach(p => line(p.line, night ? '#55524c' : '#cfc7b8', p.w));
-  line([[R0[0] - RD[0] * 100, R0[1] - RD[1] * 100], [R1[0] + RD[0] * 100, R1[1] + RD[1] * 100]], night ? '#4a4038' : '#8a7d6c', 20);
+  line([[R0[0] - RD[0] * 100, R0[1] - RD[1] * 100], [R1[0] + RD[0] * 100, R1[1] + RD[1] * 100]], night ? '#4a4038' : '#8a7d6c', 2 * FENCE);
   line([TR0, [TR0[0] + TD[0] * 200, TR0[1] + TD[1] * 200]], night ? '#4a4038' : '#8a7d6c', 5);
   for (const [r, id] of MMB) { const l = id && LOCS.find(q => q.id === id); g.fillStyle = l && l.found ? '#3070b3' : (night ? '#8a909a' : '#e9e6df'); const [x, z] = toM(r.x - r.w / 2, r.z - r.d / 2); g.fillRect(x, z, r.w * MS, r.d * MS); }
   line(DECK.P, '#ff9f1c', BW); { g.save(); const [x, z] = toM(LX, LZ); g.translate(x, z); g.rotate(-Math.atan2(TF[0], TF[1])); g.fillStyle = '#ff9f1c'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; const r = LIFT.half * MS; g.fillRect(-r, -r, 2 * r, 2 * r); g.strokeRect(-r, -r, 2 * r, 2 * r); g.restore(); }
