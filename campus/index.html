@@ -745,24 +745,25 @@ addLoc({ id: 'station', zone: '城市连接', icon: '🚋', color: '#e3edf5', na
   desc: 'Stadtbahn 的终点站，几分钟一班直达市中心和火车站。出站往南走就是欧洲广场。', insp: 'Heilbronn Stadtbahn', meshes: [platform, stHall.core] });
 
 /* ================= CAMPUSBRÜCKE (only bridge over the railway) ================= */
-// Traced from the real Campusbrücke (Heilbronn): from the lift tower on the north side the deck runs straight, crossing
-// the tracks at ~76°, swings through a long 38° curve over the southern tracks until it heads due south, then
-// ramps down in a straight line to the road junction south of the railway.
-const BN = PX(665, 1080);
-const BW = 4.6, BRH = 7.5, LIFT = { half: 2.3, inner: 1.75, top: BRH + 3.8 };
+// Traced from the real Campusbrücke (Heilbronn, see Google Maps): from the lift tower on the north side the deck runs a
+// short straight heading ESE, swings through a tight 55° curve over the tracks until it heads due south, then stays
+// up as a long straight deck (passing over the road junction) and drops to the ground by a short flight of stairs
+// just north of the student dorms.
+const BW = 4.6, BRH = 7.5, LIFT = { half: 2.3, inner: 1.75, top: BRH + 3.8 }, STAIR_L = 11;
 const brg = d => [Math.sin(d * Math.PI / 180), -Math.cos(d * Math.PI / 180)];      // compass bearing → world xz (north = -z)
-const TF = brg(142), TR = [-TF[1], TF[0]];                                              // tower faces down the first straight
-const Q0 = [BN[0] + RN[0] * 8.6, BN[1] + RN[1] * 8.6];                                 // tower door on the deck side
+const B0 = 125, B1 = 180, RAD = 28, L1 = 10, XS = PX(775, 0)[0], Z_END = PX(0, 1490)[1];
+// place the curve so the south leg runs at x = XS and the tower door sits just outside the rail corridor
+const Q0 = (() => { const rt = b => brg(b + 90), off = [0, 1].map(k => RAD * rt(B1)[k] - RAD * rt(B0)[k] - L1 * brg(B0)[k]);
+  const zE = (-12.65 - (XS + off[0] - R0[0]) * RN[0]) / RN[1] + R0[1] - off[1]; return [XS + off[0], zE + off[1]]; })();
+const TF = brg(B0), TR = [-TF[1], TF[0]];                                               // tower faces down the first straight
 const LX = Q0[0] - TF[0] * LIFT.half, LZ = Q0[1] - TF[1] * LIFT.half;
 const DECK = (() => {
-  const P = [], step = .5, R = 30, b0 = 142, b1 = 180, L1 = 12 + LIFT.half - LIFT.inner;
-  let [x, z] = [LX + TF[0] * LIFT.inner, LZ + TF[1] * LIFT.inner], b = b0; P.push([x, z]);
+  const P = [], step = .5;
+  let [x, z] = [LX + TF[0] * LIFT.inner, LZ + TF[1] * LIFT.inner], b = B0; P.push([x, z]);
   const go = (len, turn = 0) => { const n = Math.ceil(len / step); for (let k = 0; k < n; k++) { b += turn / n / 2; const [dx, dz] = brg(b); x += dx * len / n; z += dz * len / n; b += turn / n / 2; P.push([x, z]); } };
-  go(L1); go(R * (b1 - b0) * Math.PI / 180, b1 - b0);
-  const zEnd = PX(0, 1355)[1]; go(zEnd - z);
+  go(L1 + LIFT.half - LIFT.inner); go(RAD * (B1 - B0) * Math.PI / 180, B1 - B0); go(Z_END - z);
   const a = [0]; for (let i = 1; i < P.length; i++) a.push(a[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
-  const L = a[a.length - 1];
-  const A0 = a[P.findIndex(p => railDist(...p) > 12.6)];   // ramp starts once the deck has cleared the rail corridor
+  const L = a[a.length - 1], A0 = L - STAIR_L;              // A0: top of the stairs
   const hAt = q => q <= A0 ? BRH : q >= L ? 0 : BRH * (1 - (q - A0) / (L - A0));
   const T = P.map((p, i) => { const q = P[Math.min(P.length - 1, i + 1)], r = P[Math.max(0, i - 1)], dx = q[0] - r[0], dz = q[1] - r[1], l = Math.hypot(dx, dz); return [dx / l, dz / l]; });
   const box = [Math.min(...P.map(p => p[0])) - 4, Math.max(...P.map(p => p[0])) + 4, Math.min(...P.map(p => p[1])) - 4, Math.max(...P.map(p => p[1])) + 4];
@@ -792,7 +793,11 @@ const bridgeGrey = std('#8a8f94', { roughness: .45, metalness: .55 }), deckTopMa
 const BHW = BW / 2;
 // fascia slab (dark anodised metal, like the real one) + light walking surface + box girder under the high part
 const slab = deckSweep([[-BHW, -.02], [-BHW, -.95], [BHW, -.95], [BHW, -.02]], 0, iEnd, bridgeGrey, { closed: false });
-const deck = deckSweep([[BHW - .02, 0], [-BHW + .02, 0]], 0, iEnd, deckTopMat, { closed: false, cast: false });
+const deck = deckSweep([[BHW - .02, 0], [-BHW + .02, 0]], 0, iA0, deckTopMat, { closed: false, cast: false });
+const stairs = (() => { const n = 22, geos = [], [tx, tz] = DECK.T[iEnd], ry = Math.atan2(tx, tz);
+  for (let k = 0; k < n; k++) { const q = DECK.A0 + (k + .5) / n * STAIR_L, [x, z] = deckAt(q), g = new THREE.BoxGeometry(BW - .1, .34, STAIR_L / n + .02);
+    g.rotateY(ry); g.translate(x, DECK.hAt(q) - .17, z); geos.push(g); }
+  const m = new THREE.Mesh(mergeGeometries(geos), deckTopMat); m.castShadow = m.receiveShadow = true; scene.add(m); return m; })();
 deckSweep([[-1.3, -.95], [-1.1, -1.75], [1.1, -1.75], [1.3, -.95]], 0, Math.min(iEnd, iA0 + 4), bridgeGrey, { closed: false });
 // railings: dense vertical bars + flat handrail + LED strip under the handrail
 const bLedMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: new THREE.Color('#bfe4ff'), emissiveIntensity: 0, side: THREE.DoubleSide }); nightMats.push({ m: bLedMat, k: 2.2 });
@@ -811,11 +816,16 @@ const pierAt = q => { const i = Math.round(q / DECK.L * iEnd), [x, z] = DECK.P[i
   for (const k of [-1, 1]) { const c = mesh(new THREE.BoxGeometry(.55, top, .7), bridgeGrey, x + tx * k * .75, top / 2, z + tz * k * .75); c.rotation.y = ry; }
   const cb = mesh(new THREE.BoxGeometry(.5, .7, 2.2), bridgeGrey, x, top * .42, z); cb.rotation.y = ry;
   COLL.push({ t: 'o', cx: x, cz: z, ax: tx, az: tz, hl: 1.35, hw: .4, top: top }); };
-for (const q of [DECK.A0 + 1.5, DECK.A0 + 9, DECK.A0 + 16]) pierAt(q);
+{ const qs = [DECK.a[DECK.P.findIndex(p => railDist(...p) > 12.8)]];
+  for (let q = qs[0] + 9; q < DECK.A0 - 1; q += 9) qs.push(q); qs.push(DECK.A0 - .8);
+  for (const q of qs) { const [x, z] = deckAt(q); if (ROADS.every(r => distToLine(x, z, r) > 6)) pierAt(q); } }
 // low part of the ramp: can't walk underneath
 for (let i = iA0; i < iEnd; i += 2) if (DECK.H[i] > 1 && DECK.H[i] < 2.6) COLL.push({ t: 'c', cx: DECK.P[i][0], cz: DECK.P[i][1], r: BHW - .2, top: .3 });
 SURF.push({ t: 'deck', hw: BHW - .35, h: q => DECK.hAt(q) });
-WALK.push(deck);
+WALK.push(deck, stairs);
+// the stairs can only be entered from their ends: side railings block stepping on/off sideways
+{ const [tx, tz] = DECK.T[iEnd], [mx, mz] = deckAt(DECK.A0 + STAIR_L / 2);
+  for (const k of [-1, 1]) COLL.push({ t: 'o', cx: mx - tz * k * BHW, cz: mz + tx * k * BHW, ax: tx, az: tz, hl: STAIR_L / 2, hw: .1, top: 99 }); }
 
 /* --- glass liftG tower (perforated glass shaft, steel frame, canopy over the ground door) --- */
 const liftGlassTex = canvasTex(128, 128, (g, w, h) => { g.fillStyle = 'rgba(196,214,208,.62)'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(245,248,246,.9)'; for (let y = 3; y < h; y += 6) for (let x = (y / 6) % 2 ? 6 : 3; x < w; x += 6) { g.beginPath(); g.arc(x, y, 1.3, 0, 7); g.fill(); } });
@@ -874,7 +884,7 @@ function updateLift(dt) {
 const midA = (DECK.a[DECK.P.findIndex(p => railDist(...p) > 0)]), [midX, midZ] = deckAt(midA);
 addLoc({ id: 'bridge', zone: '城市连接', icon: '🌉', color: '#e3edf5', name: 'Campusbrücke 校园桥', de: 'Campusbrücke', x: midX, z: midZ, h: 12, r: 18,
   entry: [midX, midZ], entryY: BRH,
-  desc: '全校唯一一座跨越铁路的人行桥。北端是一座穿孔玻璃的电梯塔，从 Mensa 旁的路口坐电梯上去；桥面出了电梯门斜着跨过铁轨，在南侧轨道上方拐一个长长的圆弧弯，转成正南方向，再沿一条笔直的坡道落到学生公寓旁的路口。站在桥中间能看到火车从脚下经过。', insp: 'Bildungscampus Heilbronn 的 Campusbrücke 和玻璃电梯塔', meshes: [slab, deck, roofCap] });
+  desc: '全校唯一一座跨越铁路的人行桥。北端是一座穿孔玻璃的电梯塔，从 Mensa 旁的路口坐电梯上去；桥面出了电梯门朝东南方向走一小段，在铁轨上方拐一个大弯转成正南，然后高架着一路向南、从路口上方越过，最后一段短楼梯落在学生公寓门前。站在桥中间能看到火车从脚下经过。', insp: 'Bildungscampus Heilbronn 的 Campusbrücke 和玻璃电梯塔', meshes: [slab, deck, roofCap] });
 
 /* ================= SOUTH-WEST ================= */
 const RDd = R(200, 1550, 430, 1765);
