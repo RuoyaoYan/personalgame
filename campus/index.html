@@ -745,40 +745,136 @@ addLoc({ id: 'station', zone: '城市连接', icon: '🚋', color: '#e3edf5', na
   desc: 'Stadtbahn 的终点站，几分钟一班直达市中心和火车站。出站往南走就是欧洲广场。', insp: 'Heilbronn Stadtbahn', meshes: [platform, stHall.core] });
 
 /* ================= CAMPUSBRÜCKE (only bridge over the railway) ================= */
-const BN = PX(665, 1080), BS = PX(770, 1345);
-const BL = Math.hypot(BS[0] - BN[0], BS[1] - BN[1]), BB = [(BS[0] - BN[0]) / BL, (BS[1] - BN[1]) / BL];
-const BRH = 7.5, S_UP = 11, S_DN = 34;
-const bridgeH = s0 => s0 < 0 ? 0 : s0 < S_UP ? BRH * s0 / S_UP : s0 < S_DN ? BRH : s0 < BL ? BRH * (BL - s0) / (BL - S_DN) : 0;
-const bridge = new THREE.Group(); bridge.position.set(BN[0], 0, BN[1]); bridge.rotation.y = Math.atan2(BB[0], BB[1]); scene.add(bridge);
-const bAdd = (geo, mat, x, y, z, cast = true) => { const m = new THREE.Mesh(geo, mat); m.userData.static = true; m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; bridge.add(m); return m; };
-const BW = 6, deckMat = std('#e4e1da', { roughness: .7 });
-const deck = bAdd(new THREE.BoxGeometry(BW, .9, S_DN - S_UP), deckMat, 0, BRH - .45, (S_UP + S_DN) / 2);
-bAdd(new THREE.BoxGeometry(3.4, 1.4, S_DN - S_UP + 2), MAT.steel, 0, BRH - 1.6, (S_UP + S_DN) / 2);
-const nSteps = 22; for (let i = 0; i < nSteps; i++) { const s = (i + .5) / nSteps * S_UP; bAdd(new THREE.BoxGeometry(BW, .34, S_UP / nSteps + .02), deckMat, 0, bridgeH(s) - .17, s); }
-bAdd(new THREE.BoxGeometry(BW - .4, .6, Math.hypot(S_UP, BRH)), deckMat, 0, BRH / 2 - .9, S_UP / 2).rotation.x = -Math.atan2(BRH, S_UP);
-const rampLen = BL - S_DN, ramp = bAdd(new THREE.BoxGeometry(BW - 1, .5, Math.hypot(rampLen, BRH)), deckMat, 0, BRH / 2 - .25, S_DN + rampLen / 2); ramp.rotation.x = Math.atan2(BRH, rampLen);
-const ledMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: new THREE.Color('#bfe4ff'), emissiveIntensity: 0 }); nightMats.push({ m: ledMat, k: 2.2 });
-for (const sx of [-1, 1]) {
-  for (const [s0, s1, w] of [[0, S_UP, BW], [S_UP, S_DN, BW], [S_DN, BL, BW - 1]]) {
-    const y0 = bridgeH(s0 + .001), y1 = bridgeH(s1 - .001), len = Math.hypot(s1 - s0, y1 - y0), ang = Math.atan2(y1 - y0, s1 - s0), cx = sx * (w / 2 - .08);
-    const g = bAdd(new THREE.BoxGeometry(.04, 1.1, len), MAT.railGlass, cx, (y0 + y1) / 2 + .6, (s0 + s1) / 2, false); g.rotation.x = -ang;
-    const h = bAdd(new THREE.BoxGeometry(.1, .08, len), MAT.steel, cx, (y0 + y1) / 2 + 1.18, (s0 + s1) / 2, false); h.rotation.x = -ang;
-    const l = bAdd(new THREE.BoxGeometry(.1, .05, len), ledMat, cx - sx * .3, (y0 + y1) / 2 + .05, (s0 + s1) / 2, false); l.rotation.x = -ang;
-  }
+// Traced from the real Campusbrücke (Heilbronn): from the lift tower on the north side the deck runs straight, crossing
+// the tracks at ~76°, swings through a long 38° curve over the southern tracks until it heads due south, then
+// ramps down in a straight line to the road junction south of the railway.
+const BN = PX(665, 1080);
+const BW = 4.6, BRH = 7.5, LIFT = { half: 2.3, inner: 1.75, top: BRH + 3.8 };
+const brg = d => [Math.sin(d * Math.PI / 180), -Math.cos(d * Math.PI / 180)];      // compass bearing → world xz (north = -z)
+const TF = brg(142), TR = [-TF[1], TF[0]];                                              // tower faces down the first straight
+const Q0 = [BN[0] + RN[0] * 8.6, BN[1] + RN[1] * 8.6];                                 // tower door on the deck side
+const LX = Q0[0] - TF[0] * LIFT.half, LZ = Q0[1] - TF[1] * LIFT.half;
+const DECK = (() => {
+  const P = [], step = .5, R = 30, b0 = 142, b1 = 180, L1 = 12 + LIFT.half - LIFT.inner;
+  let [x, z] = [LX + TF[0] * LIFT.inner, LZ + TF[1] * LIFT.inner], b = b0; P.push([x, z]);
+  const go = (len, turn = 0) => { const n = Math.ceil(len / step); for (let k = 0; k < n; k++) { b += turn / n / 2; const [dx, dz] = brg(b); x += dx * len / n; z += dz * len / n; b += turn / n / 2; P.push([x, z]); } };
+  go(L1); go(R * (b1 - b0) * Math.PI / 180, b1 - b0);
+  const zEnd = PX(0, 1355)[1]; go(zEnd - z);
+  const a = [0]; for (let i = 1; i < P.length; i++) a.push(a[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  const L = a[a.length - 1];
+  const A0 = a[P.findIndex(p => railDist(...p) > 12.6)];   // ramp starts once the deck has cleared the rail corridor
+  const hAt = q => q <= A0 ? BRH : q >= L ? 0 : BRH * (1 - (q - A0) / (L - A0));
+  const T = P.map((p, i) => { const q = P[Math.min(P.length - 1, i + 1)], r = P[Math.max(0, i - 1)], dx = q[0] - r[0], dz = q[1] - r[1], l = Math.hypot(dx, dz); return [dx / l, dz / l]; });
+  const box = [Math.min(...P.map(p => p[0])) - 4, Math.max(...P.map(p => p[0])) + 4, Math.min(...P.map(p => p[1])) - 4, Math.max(...P.map(p => p[1])) + 4];
+  return { P, a, L, A0, hAt, box, T, N: T.map(([tx, tz]) => [-tz, tx]), H: a.map(hAt) };
+})();
+const BS = DECK.P[DECK.P.length - 1];
+// nearest point on the centreline: { a, d } (d = lateral distance), or null if it projects past either end
+function deckProj(x, z) { const { P, a, box } = DECK; if (x < box[0] || x > box[1] || z < box[2] || z > box[3]) return null; let best = null;
+  for (let i = 1; i < P.length; i++) { const [ax, az] = P[i - 1], vx = P[i][0] - ax, vz = P[i][1] - az, L2 = vx * vx + vz * vz, t = ((x - ax) * vx + (z - az) * vz) / L2;
+    if (i === 1 && t < 0 || i === P.length - 1 && t > 1) continue; const tc = clamp(t, 0, 1);
+    const d = Math.hypot(x - ax - vx * tc, z - az - vz * tc); if (!best || d < best.d) best = { a: a[i - 1] + (a[i] - a[i - 1]) * tc, d }; }
+  return best; }
+function deckAt(q) { const { P, a } = DECK; q = clamp(q, 0, DECK.L); let i = 1; while (i < a.length - 1 && a[i] < q) i++; const t = (q - a[i - 1]) / (a[i] - a[i - 1] || 1);
+  return [P[i - 1][0] + (P[i][0] - P[i - 1][0]) * t, P[i - 1][1] + (P[i][1] - P[i - 1][1]) * t]; }
+// sweep a cross-section (list of [u, y] relative to the deck centre / deck height) along part of the centreline
+function deckSweep(prof, i0, i1, mat, { closed = true, flatY = null, cast = true } = {}) {
+  const { P, N, H, a } = DECK, pos = [], uv = [], idx = [], edges = closed ? prof.length : prof.length - 1;
+  for (let e = 0; e < edges; e++) { const [u0, y0] = prof[e], [u1, y1] = prof[(e + 1) % prof.length], base = pos.length / 3;
+    for (let i = i0; i <= i1; i++) { const [x, z] = P[i], [nx, nz] = N[i], h = flatY ?? H[i];
+      pos.push(x + nx * u0, h + y0, z + nz * u0, x + nx * u1, h + y1, z + nz * u1); uv.push(a[i] / 4, 0, a[i] / 4, Math.hypot(u1 - u0, y1 - y0) / 4);
+      if (i > i0) { const k = base + (i - i0) * 2; idx.push(k - 2, k, k - 1, k - 1, k, k + 1); } } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat); m.userData.static = true; m.castShadow = cast; m.receiveShadow = true; scene.add(m); return m;
 }
-for (const s of [8.5, S_DN + .5, S_DN + 10]) { const hh = bridgeH(s) - 1; for (const sx of [-1, 1]) { const c = bAdd(new THREE.CylinderGeometry(.42, .42, hh, 12), MAT.concrete, sx * 1.6, hh / 2, s);
-  const wx = BN[0] + BB[0] * s + BB[1] * sx * 1.6, wz = BN[1] + BB[1] * s - BB[0] * sx * 1.6; addRect(wx, wz, 1, 1, hh); } }
-const BCEN = [BN[0] + BB[0] * BL / 2, BN[1] + BB[1] * BL / 2];
-SURF.push({ t: 'o', cx: BCEN[0], cz: BCEN[1], ax: BB[0], az: BB[1], hl: BL / 2, hw: BW / 2 - .35, h: (s) => bridgeH(s + BL / 2) });
-// block walking underneath the low parts of the stairs / ramp
-COLL.push({ t: 'o', cx: BN[0] + BB[0] * 6.5, cz: BN[1] + BB[1] * 6.5, ax: BB[0], az: BB[1], hl: 4.5, hw: BW / 2, top: .3 });
-COLL.push({ t: 'o', cx: BN[0] + BB[0] * (S_DN + 10.5), cz: BN[1] + BB[1] * (S_DN + 10.5), ax: BB[0], az: BB[1], hl: 10.5, hw: BW / 2, top: .3 });
-WALK.push(deck, ramp);
-const BRIDGE_ENDS = { N: new THREE.Vector3(BN[0] - BB[0] * 1.2, 0, BN[1] - BB[1] * 1.2), S: new THREE.Vector3(BS[0] + BB[0] * 1.2, 0, BS[1] + BB[1] * 1.2) };
-const midS = (S_UP + S_DN) / 2;
-addLoc({ id: 'bridge', zone: '城市连接', icon: '🌉', color: '#e3edf5', name: 'Campusbrücke 校园桥', de: 'Campusbrücke', x: BN[0] + BB[0] * midS, z: BN[1] + BB[1] * midS, h: 12, r: 18,
-  entry: [BN[0] + BB[0] * midS, BN[1] + BB[1] * midS], entryY: BRH,
-  desc: '全校唯一一座跨越铁路的人行桥：北端从 Mensa 旁的路口走楼梯上去，南端是一条缓坡，正好落在学生公寓和教学楼 D 之间的路口。站在桥中间能看到火车从脚下经过。', insp: 'Bildungscampus Heilbronn 的 Campusbrücke', meshes: [deck, ramp] });
+const iEnd = DECK.P.length - 1, iA0 = DECK.a.findIndex(q => q >= DECK.A0);
+const bridgeGrey = std('#8a8f94', { roughness: .45, metalness: .55 }), deckTopMat = std('#c9c6bf', { roughness: .8 });
+const BHW = BW / 2;
+// fascia slab (dark anodised metal, like the real one) + light walking surface + box girder under the high part
+const slab = deckSweep([[-BHW, -.02], [-BHW, -.95], [BHW, -.95], [BHW, -.02]], 0, iEnd, bridgeGrey, { closed: false });
+const deck = deckSweep([[BHW - .02, 0], [-BHW + .02, 0]], 0, iEnd, deckTopMat, { closed: false, cast: false });
+deckSweep([[-1.3, -.95], [-1.1, -1.75], [1.1, -1.75], [1.3, -.95]], 0, Math.min(iEnd, iA0 + 4), bridgeGrey, { closed: false });
+// railings: dense vertical bars + flat handrail + LED strip under the handrail
+const bLedMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: new THREE.Color('#bfe4ff'), emissiveIntensity: 0, side: THREE.DoubleSide }); nightMats.push({ m: bLedMat, k: 2.2 });
+for (const sx of [-1, 1]) {
+  const u = sx * (BHW - .07);
+  deckSweep([[u - .06, 1.12], [u + .06, 1.12], [u + .06, 1.2], [u - .06, 1.2]], 0, iEnd, bridgeGrey, { cast: false });
+  deckSweep([[u - .05, .08], [u + .05, .08], [u + .05, .13], [u - .05, .13]], 0, iEnd, bridgeGrey, { cast: false });
+  deckSweep([[u - sx * .12, 1.06], [u - sx * .12, 1.1]], 0, iEnd, bLedMat, { closed: false, cast: false });
+}
+{ const bars = [], step = .16; for (let q = .3; q < DECK.L - .2; q += step) { const [x, z] = deckAt(q), i = Math.round(q / DECK.L * iEnd), [nx, nz] = DECK.N[i]; for (const sx of [-1, 1]) bars.push([x + nx * sx * (BHW - .07), DECK.hAt(q), z + nz * sx * (BHW - .07)]); }
+  const im = new THREE.InstancedMesh(BOXG, bridgeGrey, bars.length);
+  bars.forEach(([x, y, z], k) => { dummy.position.set(x, y + .6, z); dummy.scale.set(.035, 1.1, .035); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); im.setMatrixAt(k, dummy.matrix); });
+  im.castShadow = true; scene.add(im); }
+// H-frame piers (two tall flat columns tied by a crossbeam, as in the photo) — none inside the rail corridor
+const pierAt = q => { const i = Math.round(q / DECK.L * iEnd), [x, z] = DECK.P[i], [tx, tz] = DECK.T[i], top = DECK.H[i] - .95 - (i <= iA0 + 4 ? .8 : 0), ry = Math.atan2(tx, tz);
+  for (const k of [-1, 1]) { const c = mesh(new THREE.BoxGeometry(.55, top, .7), bridgeGrey, x + tx * k * .75, top / 2, z + tz * k * .75); c.rotation.y = ry; }
+  const cb = mesh(new THREE.BoxGeometry(.5, .7, 2.2), bridgeGrey, x, top * .42, z); cb.rotation.y = ry;
+  COLL.push({ t: 'o', cx: x, cz: z, ax: tx, az: tz, hl: 1.35, hw: .4, top: top }); };
+for (const q of [DECK.A0 + 1.5, DECK.A0 + 9, DECK.A0 + 16]) pierAt(q);
+// low part of the ramp: can't walk underneath
+for (let i = iA0; i < iEnd; i += 2) if (DECK.H[i] > 1 && DECK.H[i] < 2.6) COLL.push({ t: 'c', cx: DECK.P[i][0], cz: DECK.P[i][1], r: BHW - .2, top: .3 });
+SURF.push({ t: 'deck', hw: BHW - .35, h: q => DECK.hAt(q) });
+WALK.push(deck);
+
+/* --- glass liftG tower (perforated glass shaft, steel frame, canopy over the ground door) --- */
+const liftGlassTex = canvasTex(128, 128, (g, w, h) => { g.fillStyle = 'rgba(196,214,208,.62)'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(245,248,246,.9)'; for (let y = 3; y < h; y += 6) for (let x = (y / 6) % 2 ? 6 : 3; x < w; x += 6) { g.beginPath(); g.arc(x, y, 1.3, 0, 7); g.fill(); } });
+liftGlassTex.repeat.set(2.2, 2.2);
+const liftGlass = new THREE.MeshStandardMaterial({ color: '#cfe0dc', map: liftGlassTex, transparent: true, opacity: .8, roughness: .12, metalness: .35, depthWrite: false, side: THREE.DoubleSide });
+const liftG = new THREE.Group(); liftG.position.set(LX, 0, LZ); liftG.rotation.y = Math.atan2(TF[0], TF[1]); scene.add(liftG);
+// local frame: +z = towards the deck (top door), -z = ground door
+const lAdd = (geo, mat, x, y, z, cast = true, dyn = false) => { const m = new THREE.Mesh(geo, mat); m.userData.static = !dyn; m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; liftG.add(m); return m; };
+const LH = LIFT.half, LT = LIFT.top, DOOR_H = 2.5, TOPDOOR_W = BW - .3;
+for (const x of [-1, 1]) for (const z of [-1, 1]) lAdd(new THREE.BoxGeometry(.18, LT, .18), bridgeGrey, x * (LH - .09), LT / 2, z * (LH - .09));
+for (const y of [.3, 3.4, BRH - .95, BRH + 2.7]) for (const [w, d, x, z] of [[LH * 2, .14, 0, -LH + .07], [LH * 2, .14, 0, LH - .07], [.14, LH * 2, -LH + .07, 0], [.14, LH * 2, LH - .07, 0]])
+  lAdd(new THREE.BoxGeometry(w, .14, d), bridgeGrey, x, y, z, false);
+lAdd(new THREE.BoxGeometry(LH * 2 + .02, .45, LH * 2 + .02), MAT.frame, 0, .22, 0);                       // louvred base
+const roofCap = lAdd(new THREE.BoxGeometry(LH * 2 + .5, .4, LH * 2 + .5), bridgeGrey, 0, LT + .2, 0);
+const glassFaces = [];
+const pane = (w, h, x, y, z, ry) => { const m = lAdd(new THREE.PlaneGeometry(w, h), liftGlass, x, y + h / 2, z, false); m.rotation.y = ry; glassFaces.push(m); };
+for (const k of [-1, 1]) pane(LH * 2, LT - .45, k * LH, .45, 0, Math.PI / 2);                                  // sides: full height
+pane(LH * 2, LT - DOOR_H - .45, 0, DOOR_H + .45, -LH, 0); for (const k of [-1, 1]) pane(LH - 1.1, DOOR_H, k * (LH + 1.1) / 2, .45, -LH, 0);   // ground door side
+pane(LH * 2, BRH - .95 - .45, 0, .45, LH, 0); pane(LH * 2, LT - BRH - 2.5, 0, BRH + 2.5, LH, 0);           // deck side: opening at deck level
+lAdd(new THREE.BoxGeometry(2.8, .12, 1.3), bridgeGrey, 0, DOOR_H + .55, -LH - .65);                        // canopy over the ground door
+lAdd(new THREE.BoxGeometry(2.4, .08, .08), bridgeGrey, 0, DOOR_H + .45, -LH - .02, false);
+// liftCab + sliding doors (dynamic)
+const cabLight = new THREE.MeshStandardMaterial({ color: '#f5f2ea', emissive: new THREE.Color('#fff1d0'), emissiveIntensity: 0 }); nightMats.push({ m: cabLight, k: 1.4 });
+const doorMat = new THREE.MeshStandardMaterial({ color: '#9fb4ba', metalness: .6, roughness: .12, transparent: true, opacity: .6 });
+const liftCab = new THREE.Group(); liftG.add(liftCab);
+for (const [geo, mat, y] of [[new THREE.BoxGeometry(LIFT.inner * 2 + .1, .2, LIFT.inner * 2 + .1), bridgeGrey, -.1], [new THREE.BoxGeometry(LIFT.inner * 2, .08, LIFT.inner * 2), cabLight, 2.55]]) { const m = new THREE.Mesh(geo, mat); m.position.y = y; liftCab.add(m); }
+const gDoors = [-1, 1].map(k => lAdd(new THREE.BoxGeometry(1.1, DOOR_H - .05, .05), doorMat, k * .55, .45 + DOOR_H / 2, -LH + .12, false, true));
+const tDoors = [-1, 1].map(k => lAdd(new THREE.BoxGeometry(1.1, 2.4, .05), doorMat, k * .55, BRH + 1.2, LH - .12, false, true));
+// physics: liftCab floor follows the liftG, walls block; the deck side is low-blocked so it is only open up top
+const LIFT_ST = { y: 0, to: 0, state: 'idle', t: 0, door: 1, armed: true, rider: false };
+SURF.push({ t: 'o', cx: LX, cz: LZ, ax: TF[0], az: TF[1], hl: LIFT.inner, hw: LIFT.inner, h: () => LIFT_ST.y });
+const tLoc = (f, r) => [LX + TF[0] * f + TR[0] * r, LZ + TF[1] * f + TR[1] * r];
+{ const wall = (f, r, ax, az, top) => { const [cx, cz] = tLoc(f, r); COLL.push({ t: 'o', cx, cz, ax, az, hl: LH, hw: .15, top }); };
+  wall(0, LH, TF[0], TF[1], 99); wall(0, -LH, TF[0], TF[1], 99); wall(LH, 0, TR[0], TR[1], 1); }
+const [ldx, ldz] = tLoc(-LH, 0), LIFT_DOOR = { t: 'o', cx: ldx, cz: ldz, ax: TR[0], az: TR[1], hl: LH, hw: .15, top: 0, dyn: true }; COLL.push(LIFT_DOOR);
+const LIFT_OUT = new THREE.Vector3(tLoc(-LH - 2.4, 0)[0], 0, tLoc(-LH - 2.4, 0)[1]);
+const S_END = (() => { const [tx, tz] = DECK.T[iEnd]; return new THREE.Vector3(BS[0] + tx * 1.6, 0, BS[1] + tz * 1.6); })();
+const inCab = (x, z) => { const dx = x - LX, dz = z - LZ; return Math.abs(dx * TF[0] + dz * TF[1]) < LIFT.inner && Math.abs(dx * TR[0] + dz * TR[1]) < LIFT.inner; };
+const liftReady = y => Math.abs(LIFT_ST.y - y) < .2 && (LIFT_ST.state === 'idle' || LIFT_ST.state === 'opening' && LIFT_ST.door > .6);
+const liftLocked = () => LIFT_ST.rider && (LIFT_ST.state === 'closing' || LIFT_ST.state === 'moving');
+function updateLift(dt) {
+  const p = player.position, L = LIFT_ST, inside = inCab(p.x, p.z) && Math.abs(p.y - L.y) < 1.5, near = Math.hypot(p.x - LX, p.z - LZ) < 6.5, lvl = p.y > BRH / 2 ? BRH : 0;
+  if (!inside) L.armed = true;
+  if (L.state === 'idle') {
+    if (inside && L.armed) Object.assign(L, { state: 'closing', t: 0, to: L.y < 1 ? BRH : 0, rider: true });
+    else if (!inside && near && Math.abs(lvl - L.y) > 1) Object.assign(L, { state: 'closing', t: 0, to: lvl, rider: false });
+  } else if (L.state === 'closing') { L.t += dt; L.door = Math.max(0, 1 - L.t / .7); if (L.t > .9) L.state = 'moving'; }
+  else if (L.state === 'moving') { const d = L.to - L.y, v = 2.4 * dt; if (Math.abs(d) <= v) Object.assign(L, { y: L.to, state: 'opening', t: 0, armed: !L.rider }); else L.y += Math.sign(d) * v;
+    if (L.rider) { p.y = p.yTarget = L.y; } }
+  else if (L.state === 'opening') { L.t += dt; L.door = Math.min(1, L.t / .7); if (L.t > .7) L.state = 'idle'; }
+  liftCab.position.y = L.y;
+  const gOpen = L.y < .05 ? L.door : 0, tOpen = L.y > BRH - .05 ? L.door : 0;
+  gDoors.forEach((d, k) => d.position.x = (k ? 1 : -1) * (.55 + gOpen * 1.0)); tDoors.forEach((d, k) => d.position.x = (k ? 1 : -1) * (.55 + tOpen * 1.0));
+  LIFT_DOOR.top = gOpen > .6 ? 0 : 3;
+}
+const midA = (DECK.a[DECK.P.findIndex(p => railDist(...p) > 0)]), [midX, midZ] = deckAt(midA);
+addLoc({ id: 'bridge', zone: '城市连接', icon: '🌉', color: '#e3edf5', name: 'Campusbrücke 校园桥', de: 'Campusbrücke', x: midX, z: midZ, h: 12, r: 18,
+  entry: [midX, midZ], entryY: BRH,
+  desc: '全校唯一一座跨越铁路的人行桥。北端是一座穿孔玻璃的电梯塔，从 Mensa 旁的路口坐电梯上去；桥面出了电梯门斜着跨过铁轨，在南侧轨道上方拐一个长长的圆弧弯，转成正南方向，再沿一条笔直的坡道落到学生公寓旁的路口。站在桥中间能看到火车从脚下经过。', insp: 'Bildungscampus Heilbronn 的 Campusbrücke 和玻璃电梯塔', meshes: [slab, deck, roofCap] });
 
 /* ================= SOUTH-WEST ================= */
 const RDd = R(200, 1550, 430, 1765);
@@ -928,6 +1024,7 @@ function freeAt(x, z, m) {
   if (x < BOUND.x0 + m || x > BOUND.x1 - m || z < BOUND.z0 + m || z > BOUND.z1 - m) return false;
   if (inPoly(x, z, RIVER) || Math.abs(railDist(x, z)) < 12 + m) return false;
   if (blockedAt(x, z, 0, m)) return false;
+  if (Math.hypot(x - LIFT_OUT.x, z - LIFT_OUT.z) < 4.5 + m || Math.hypot(x - S_END.x, z - S_END.z) < 3 + m) return false;
   for (const s of SURF) if (surfContains(s, x, z, m)) return false;
   for (const r of ROADS) if (distToLine(x, z, r) < 4 + m) return false;
   for (const p of PATHS) if (distToLine(x, z, p.line) < p.w / 2 + m * .6) return false;
@@ -1058,7 +1155,7 @@ const pRing = new THREE.Mesh(new THREE.RingGeometry(.7, .9, 32), new THREE.MeshB
 { const [sx, sz] = PX(600, 1070); player.position.set(sx, 0, sz); player.rotation.y = Math.PI * .8; } scene.add(player);
 // NPC routes: polylines (world) + optional height fn
 const npcRoutes = [...ROADS.map(r => ({ line: r, off: 5.9 })), { line: PATHS[0].line, off: 0 }, ...PATHS.slice(3, 11).map(p => ({ line: p.line, off: 0 })),
-  { line: [[BN[0] - BB[0] * 3, BN[1] - BB[1] * 3], [BS[0] + BB[0] * 3, BS[1] + BB[1] * 3]], off: 0, bridge: true }];
+  { line: [...DECK.P.filter((_, i) => i % 4 === 0 && DECK.a[i] > 3.2), [S_END.x, S_END.z]], off: 0, bridge: true }];
 npcRoutes.forEach(r => { r.cum = [0]; for (let i = 1; i < r.line.length; i++) r.cum.push(r.cum[i - 1] + Math.hypot(r.line[i][0] - r.line[i - 1][0], r.line[i][1] - r.line[i - 1][1])); r.L = r.cum[r.cum.length - 1]; });
 function routeAt(r, d) { let i = 1; while (i < r.cum.length - 1 && r.cum[i] < d) i++; const t = (d - r.cum[i - 1]) / (r.cum[i] - r.cum[i - 1] || 1); const [ax, az] = r.line[i - 1], [bx2, bz2] = r.line[i];
   const dx = bx2 - ax, dz = bz2 - az, L = Math.hypot(dx, dz) || 1; return [ax + dx * t, az + dz * t, dx / L, dz / L]; }
@@ -1191,10 +1288,11 @@ function setHover(l) { if (hovered === l) return; if (hovered && hovered !== sel
 const PR = .45, STEP = 1.3;
 function surfContains(s, x, z, m = 0) {
   if (s.t === 'c') return Math.hypot(x - s.cx, z - s.cz) < s.r + m;
+  if (s.t === 'deck') { const q = deckProj(x, z); return !!q && q.d <= s.hw + m; }
   if (s.t === 'o') { const dx = x - s.cx, dz = z - s.cz, a = dx * s.ax + dz * s.az, u = -dx * s.az + dz * s.ax; return Math.abs(a) <= s.hl + m && Math.abs(u) <= s.hw + m; }
   return x >= s.minX - m && x <= s.maxX + m && z >= s.minZ - m && z <= s.maxZ + m;
 }
-function surfH(s, x, z) { if (s.t === 'o') { const a = (x - s.cx) * s.ax + (z - s.cz) * s.az; return s.h(a); } return s.h(x, z); }
+function surfH(s, x, z) { if (s.t === 'deck') { const q = deckProj(x, z); return q ? s.h(q.a) : 0; } if (s.t === 'o') { const a = (x - s.cx) * s.ax + (z - s.cz) * s.az; return s.h(a); } return s.h(x, z); }
 function surfaceAt(x, z, curY) { let best = Math.abs(curY) <= STEP ? 0 : null;
   for (const s of SURF) { if (!surfContains(s, x, z)) continue; const h = surfH(s, x, z); if (Math.abs(h - curY) <= STEP && (best == null || h > best)) best = h; }
   return best; }
@@ -1220,7 +1318,7 @@ function buildNav() {
   navGrid = new Uint8Array(NAV.nx * NAV.nz);
   const m = PR + .15;
   for (const c of COLL) {
-    if (c.top <= .2) continue;
+    if (c.top <= .2 || c.dyn) continue;
     let x0, x1, z0, z1;
     if (c.t === 'r') { x0 = c.minX; x1 = c.maxX; z0 = c.minZ; z1 = c.maxZ; }
     else if (c.t === 'c') { x0 = c.cx - c.r; x1 = c.cx + c.r; z0 = c.cz - c.r; z1 = c.cz + c.r; }
@@ -1263,19 +1361,22 @@ function astar(ax, az, bx, bz) {
   return out.map(([i, j]) => { const [x, z] = nPos(i, j); return new THREE.Vector3(x, 0, z); });
 }
 function planRoute(target) {
-  const p = player.position, pUp = p.y > 1.2, tUp = target.y > 1.2;
-  const ends = [BRIDGE_ENDS.N, BRIDGE_ENDS.S], sideOf = v => railSide(v.x, v.z);
-  const endFor = side => ends.find(e => sideOf(e) === side);
-  let pts = [];
-  if (tUp && !pUp && target.y > 2) pts = [ends.reduce((a, b) => p.distanceTo(a) + a.distanceTo(target) < p.distanceTo(b) + b.distanceTo(target) ? a : b)];
-  else if (pUp && !tUp) pts = [endFor(sideOf(target))];
-  else if (!pUp && !tUp && sideOf(p) !== sideOf(target)) pts = [endFor(sideOf(p)), endFor(sideOf(target))];
+  const p = player.position, onDeck = v => v.y > 1.2 && (deckProj(v.x, v.z)?.d ?? 99) < BHW + 1 || inCab(v.x, v.z) && v.y > 1.2;
+  const pUp = onDeck(p), tUp = onDeck(target), sideOf = v => railSide(v.x, v.z), NORTH = sideOf(LIFT_OUT);
   if (target.y < 1.2) { if (!navGrid) buildNav(); const [ti, tj] = nCell(target.x, target.z); if (navGrid[nIdx(ti, tj)]) { const [a, b] = nearestFree(ti, tj); const [x, z] = nPos(a, b); target = new THREE.Vector3(x, target.y, z); } }
-  const way = [player.position.clone(), ...pts.map(v => v.clone()), target.clone()], out = [];
-  const isEnd = v => v.distanceTo(BRIDGE_ENDS.N) < .1 || v.distanceTo(BRIDGE_ENDS.S) < .1;
-  for (let i = 1; i < way.length; i++) { const a = way[i - 1], b = way[i];
-    if (a.y < 1.2 && b.y < 1.2 && !(isEnd(a) && isEnd(b))) { const mid = astar(a.x, a.z, b.x, b.z); if (mid) out.push(...mid); }
-    out.push(b); }
+  const out = []; let cur = p.clone();
+  const pt = v => { out.push(v); cur = v; };
+  const gnd = v => { const mid = astar(cur.x, cur.z, v.x, v.z); if (mid) out.push(...mid); pt(v); };
+  const liftAt = y => { const v = new THREE.Vector3(LX, y, LZ); v.lift = true; return v; };
+  const along = (a0, a1) => { const n = Math.max(1, Math.ceil(Math.abs(a1 - a0) / 2.5)); for (let k = 1; k <= n; k++) { const q = a0 + (a1 - a0) * k / n, [x, z] = deckAt(q); pt(new THREE.Vector3(x, DECK.hAt(q), z)); } };
+  // ground → deck (returns the arc position we arrive at) and deck → ground
+  const board = side => side === NORTH ? (gnd(LIFT_OUT.clone()), pt(liftAt(0)), 0) : (gnd(S_END.clone()), pt(new THREE.Vector3(...deckAt(DECK.L - .5).flatMap((c, i) => i ? [0, c] : [c]))), DECK.L);
+  const alight = (a, side) => { if (side === NORTH) { along(a, 0); pt(liftAt(BRH)); pt(LIFT_OUT.clone()); } else { along(a, DECK.L); pt(S_END.clone()); } };
+  const deckA = v => inCab(v.x, v.z) ? 0 : deckProj(v.x, v.z).a;
+  if (!pUp && !tUp) { if (p.y > 1.2 || target.y > 1.2 || sideOf(p) === sideOf(target)) gnd(target.clone()); else { alight(board(sideOf(p)), sideOf(target)); gnd(target.clone()); } }
+  else if (!pUp && tUp) { along(board(sideOf(p)), deckA(target)); pt(target.clone()); }
+  else if (pUp && !tUp) { alight(deckA(p), sideOf(target)); gnd(target.clone()); }
+  else { if (inCab(p.x, p.z)) pt(liftAt(p.y)); along(deckA(p), deckA(target)); pt(target.clone()); }
   route = out; stuckT = 0;
 }
 const fwd = new THREE.Vector3(), right = new THREE.Vector3(), dir = new THREE.Vector3();
@@ -1286,6 +1387,8 @@ function updatePlayer(dt) {
   dir.set(0, 0, 0);
   if (ix || iz) { camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize(); right.crossVectors(fwd, UP).normalize(); dir.addScaledVector(fwd, iz).addScaledVector(right, ix); route = []; if (!follow) setFollow(true); }
   else if (route.length) { dir.subVectors(route[0], player.position); dir.y = 0; if (dir.length() < .6) { route.shift(); dir.set(0, 0, 0); } }
+  const pp = player.position, waitLift = route.length && route[0].lift && !inCab(pp.x, pp.z) && !liftReady(pp.y > BRH / 2 ? BRH : 0) && Math.hypot(pp.x - LX, pp.z - LZ) < 5.5;
+  if (liftLocked() || waitLift) { dir.set(0, 0, 0); stuckT = 0; }
   const moving = dir.lengthSq() > 0, run = keys.ShiftLeft || keys.ShiftRight || route.length > 1;
   if (moving) { dir.normalize(); const sp = (run ? 9 : 5) * dt;
     let ok = tryMove(dir.x * sp, dir.z * sp);
@@ -1297,14 +1400,14 @@ function updatePlayer(dt) {
   arrow.position.y = 3.1 + Math.sin(performance.now() / 300) * .2; arrow.rotation.y += dt * 2;
   for (const l of LOCS) if (!l.found && Math.hypot(p.x - l.entry[0], p.z - l.entry[1]) < 2.2 && Math.abs(p.y - (l.entryY || 0)) < 2) markFound(l);
 }
-const BSURF = SURF.find(s => s.t === 'o' && s.hl === BL / 2);
+const DSURF = SURF.find(s => s.t === 'deck');
 function updateNPCs(dt) {
   walkers.forEach((w, i) => {
     let sw = 0;
     if (w.pause > 0) w.pause -= dt;
     else { w.d += w.dir * w.sp * dt; if (w.d > w.r.L || w.d < 0) { w.d = clamp(w.d, 0, w.r.L); w.dir *= -1; w.pause = rnd() * 2; } w.ph += dt * w.sp * 5.5; sw = Math.sin(w.ph) * .5; }
     const [x, z, ux, uz] = routeAt(w.r, w.d), px = x - uz * w.lane, pz = z + ux * w.lane;
-    poseCrowd(i, px, w.r.bridge ? Math.max(0, surfH(BSURF, px, pz)) : 0, pz, Math.atan2(ux * w.dir, uz * w.dir), sw, false);
+    poseCrowd(i, px, w.r.bridge ? Math.max(0, surfH(DSURF, px, pz)) : 0, pz, Math.atan2(ux * w.dir, uz * w.dir), sw, false);
   });
   mS.makeTranslation(player.position.x, player.position.y + .1, player.position.z); blobIM.setMatrixAt(N_CROWD, mS);
   for (const k of CROWD_PARTS) crowdIM[k].instanceMatrix.needsUpdate = true; blobIM.instanceMatrix.needsUpdate = true;
@@ -1331,7 +1434,7 @@ function drawStatic() {
   line([[R0[0] - RD[0] * 100, R0[1] - RD[1] * 100], [R1[0] + RD[0] * 100, R1[1] + RD[1] * 100]], night ? '#4a4038' : '#8a7d6c', 20);
   line([TR0, [TR0[0] + TD[0] * 200, TR0[1] + TD[1] * 200]], night ? '#4a4038' : '#8a7d6c', 5);
   for (const [r, id] of MMB) { const l = id && LOCS.find(q => q.id === id); g.fillStyle = l && l.found ? '#3070b3' : (night ? '#8a909a' : '#e9e6df'); const [x, z] = toM(r.x - r.w / 2, r.z - r.d / 2); g.fillRect(x, z, r.w * MS, r.d * MS); }
-  line([BN, BS], '#ff9f1c', 6);
+  line(DECK.P, '#ff9f1c', BW); { g.save(); const [x, z] = toM(LX, LZ); g.translate(x, z); g.rotate(-Math.atan2(TF[0], TF[1])); g.fillStyle = '#ff9f1c'; g.strokeStyle = '#fff'; g.lineWidth = 1.5; const r = LIFT.half * MS; g.fillRect(-r, -r, 2 * r, 2 * r); g.strokeRect(-r, -r, 2 * r, 2 * r); g.restore(); }
   mapDirty = false;
 }
 function drawMinimap(t) {
@@ -1392,7 +1495,7 @@ function loop() {
   if (selected) selRing.material.opacity = .55 + Math.sin(t * 4) * .3; else selRing.material.opacity *= .85;
   if (tgtRing.material.opacity > .01) tgtRing.material.opacity *= route.length ? .99 : .85;
   for (let i = bursts.length - 1; i >= 0; i--) { const b = bursts[i]; b.t += dt; b.m.scale.setScalar(1 + b.t * 14); b.m.material.opacity = 1 - b.t / .8; if (b.t > .8) { scene.remove(b.m); bursts.splice(i, 1); } }
-  updatePlayer(dt); updateNPCs(dt);
+  updateLift(dt); updatePlayer(dt); updateNPCs(dt);
   if (fly) { fly.t += dt / fly.dur; const k = ease(Math.min(1, fly.t)); controls.target.lerpVectors(fly.t0, fly.t1, k); camera.position.lerpVectors(fly.c0, fly.c1, k); if (fly.t >= 1) fly = null; }
   else if (follow) { v3.copy(player.position).sub(controls.target).multiplyScalar(Math.min(1, dt * 5)); controls.target.add(v3); camera.position.add(v3); }
   controls.update();
